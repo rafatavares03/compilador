@@ -1,12 +1,15 @@
 import frontend.AnalisadorLexico;
 
+import java.io.File;
+
 public class Compilador {
-    private final static AnalisadorLexico analisadorLexico = new AnalisadorLexico();
 
     public static void main(String[] args) {
         if(args.length == 0) {
             throw new RuntimeException("O caminho de um código fonte deve ser especificado.");
         }
-        analisadorLexico.analisarCodigoFonte(args[0]);
+        File codigoFonte = new File(args[0]);
+        AnalisadorLexico analisadorLexico = new AnalisadorLexico(codigoFonte);
+        analisadorLexico.executarAnaliseLexica();
     }
 }
