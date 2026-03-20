@@ -13,6 +13,7 @@ public class AnalisadorLexico {
     private final FileReader fileReader;
     Pattern separador = Pattern.compile("\r?\n|[\t (){};\\[\\]]");
     Pattern literal = Pattern.compile("\'|\"");
+    Pattern comentario = Pattern.compile("//|/\\*");
 
     public AnalisadorLexico(File codigoFonte) {
         this.codigoFonte = codigoFonte;
@@ -29,6 +30,10 @@ public class AnalisadorLexico {
 
     boolean ehLiteral(String str) {
         return literal.matcher(str).matches();
+    }
+
+    boolean ehComentario(String str) {
+        return comentario.matcher(str).matches();
     }
 
     public void separadorHandler(String str) {
@@ -76,29 +81,60 @@ public class AnalisadorLexico {
         System.out.println(str + " " + linha + " " + (coluna - str.length() + 1));
     }
 
+    public void comentarioHandler(String str) {
+        int charByte;
+        if(Pattern.matches("//", str)) {
+            while((charByte = lerNovoCaractere()) != -1) {
+                if((char)charByte == '\n') {
+                    break;
+                }
+            }
+            novaLinha();
+        }
+        if(Pattern.matches("/\\*", str)) {
+            while((charByte = lerNovoCaractere()) != -1) {
+                if((char)charByte == '\n') {
+                    novaLinha();
+                }
+                if((char)charByte == '*') {
+                    charByte = lerNovoCaractere();
+                    if((char)charByte == '/') {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
     public void executarAnaliseLexica() {
         this.linha = 1;
         this.coluna = 0;
         int charByte;
-        try {
-            while((charByte = lerNovoCaractere()) != -1) {
-                String character = String.valueOf((char)charByte);
-                if(Pattern.matches("\r", character)) {
-                    if((charByte = fileReader.read()) != -1) {
-                        character += String.valueOf((char)charByte);
-                    }
-                }
+        while((charByte = lerNovoCaractere()) != -1) {
+            String character = String.valueOf((char)charByte);
 
-                if(ehSeparador(character)) {
-                    separadorHandler(character);
-                }
-
-                if(ehLiteral(character)) {
-                    literalHandler(character);
+            if(Pattern.matches("\r", character)) {
+                if((charByte = lerNovoCaractere()) != -1) {
+                    character += String.valueOf((char)charByte);
                 }
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+
+            if(Pattern.matches("/", character)) {
+                if((charByte = lerNovoCaractere()) != -1) {
+                    character += String.valueOf((char)charByte);
+                }
+                if(ehComentario(character)) {
+                    comentarioHandler(character);
+                }
+            }
+
+            if(ehSeparador(character)) {
+                separadorHandler(character);
+            }
+
+            if(ehLiteral(character)) {
+                literalHandler(character);
+            }
         }
     }
 
