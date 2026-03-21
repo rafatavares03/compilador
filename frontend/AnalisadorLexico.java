@@ -9,14 +9,13 @@ import java.util.regex.Pattern;
 public class AnalisadorLexico {
     private int linha;
     private int coluna;
-    private final File codigoFonte;
     private final FileReader fileReader;
     Pattern separador = Pattern.compile("\r?\n|[\t (){};\\[\\]]");
     Pattern literal = Pattern.compile("\'|\"");
     Pattern comentario = Pattern.compile("//|/\\*");
+    Pattern identificador = Pattern.compile("[_a-zA-Z]");
 
     public AnalisadorLexico(File codigoFonte) {
-        this.codigoFonte = codigoFonte;
         try {
             this.fileReader = new FileReader(codigoFonte);
         } catch (FileNotFoundException e) {
@@ -34,6 +33,10 @@ public class AnalisadorLexico {
 
     boolean ehComentario(String str) {
         return comentario.matcher(str).matches();
+    }
+
+    boolean ehIdentificador(String str) {
+        return identificador.matcher(str).matches();
     }
 
     public void separadorHandler(String str) {
@@ -106,6 +109,34 @@ public class AnalisadorLexico {
         }
     }
 
+    public void identificadorHandler(String str) {
+        StringBuilder stringBuilder = new StringBuilder(str);
+        int charByte;
+        while((charByte = lerNovoCaractere()) != -1) {
+            String character = String.valueOf((char)charByte);
+
+            if(ehSeparador(character)) {
+                str = stringBuilder.toString();
+                System.out.println(str + " " + linha + " " + (coluna - str.length()));
+                separadorHandler(character);
+                break;
+            }
+
+            if((char)charByte == '\r') {
+                charByte = lerNovoCaractere();
+                character += String.valueOf((char)charByte);
+                if(ehSeparador(character)) {
+                    str = stringBuilder.toString();
+                    System.out.println(str + " " + linha + " " + (coluna - str.length()));
+                    separadorHandler(character);
+                    break;
+                }
+            }
+
+            stringBuilder.append(character);
+        }
+    }
+
     public void executarAnaliseLexica() {
         this.linha = 1;
         this.coluna = 0;
@@ -134,6 +165,10 @@ public class AnalisadorLexico {
 
             if(ehLiteral(character)) {
                 literalHandler(character);
+            }
+
+            if(ehIdentificador(character)) {
+                identificadorHandler(character);
             }
         }
     }
