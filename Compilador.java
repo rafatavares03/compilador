@@ -9,7 +9,7 @@ public class Compilador {
             throw new RuntimeException("O caminho de um código fonte deve ser especificado.");
         }
         File codigoFonte = new File(args[0]);
-        AnalisadorLexico analisadorLexico = new AnalisadorLexico(codigoFonte);
-        analisadorLexico.executarAnaliseLexica();
+        AnalisadorLexico analisadorLexico = new AnalisadorLexico();
+        analisadorLexico.executarAnaliseLexica(codigoFonte);
     }
 }

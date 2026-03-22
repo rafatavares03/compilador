@@ -1,29 +1,18 @@
 package frontend;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
 import java.util.regex.Pattern;
 
 public class AnalisadorLexico {
-    private int linha;
-    private int coluna;
-    private final FileReader fileReader;
-    Pattern separador = Pattern.compile("\r?\n|[\t (){};\\[\\]]");
-    Pattern literal = Pattern.compile("['\"]");
-    Pattern comentario = Pattern.compile("//|/\\*");
-    Pattern identificador = Pattern.compile("[_a-zA-Z]");
-    Pattern operador = Pattern.compile("\\+\\+?|--?|&&?|\\|\\|?|[*/]|(=[=+-]?)|[<>!]=?");
-    Pattern numerico = Pattern.compile("[0-9]+(\\.[0-9]+)?");
-
-    public AnalisadorLexico(File codigoFonte) {
-        try {
-            this.fileReader = new FileReader(codigoFonte);
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
-        }
-    }
+    private Scanner scanner;
+    private final Pattern separador = Pattern.compile("\r?\n|[\t (){};,\\[\\]]");
+    private final Pattern literal = Pattern.compile("['\"]");
+    private final Pattern comentario = Pattern.compile("//|/\\*");
+    private final Pattern identificador = Pattern.compile("[_a-zA-Z]");
+    private final Pattern operador = Pattern.compile("\\+\\+?|--?|&&?|\\|\\|?|[*/]|(=[=+-]?)|[<>!]=?");
+    private final Pattern numerico = Pattern.compile("[0-9]+(\\.[0-9]+)?");
+    private final Pattern palavrasReservadas = Pattern.compile("if|else|while|break|continue|return|null");
 
     boolean ehSeparador(String str) {
         return separador.matcher(str).matches();
@@ -51,29 +40,29 @@ public class AnalisadorLexico {
 
     public void separadorHandler(String str) {
         if(Pattern.matches("[(){};\\[\\]]", str)) {
-            System.out.println(str + " " + this.linha + " " + this.coluna);
+            System.out.println(str + " " + this.scanner.getLine() + " " + this.scanner.getColumn());
         }
         if(Pattern.matches("\r?\n", str)) {
-            novaLinha();
+            this.scanner.newLine();
         }
     }
 
     public void literalHandler(String str) {
         if(Pattern.matches("\'", str)) {
-            int charByte = lerNovoCaractere();
+            int charByte = this.scanner.readCharacter();
             str += String.valueOf((char)charByte);
             if(!Pattern.matches("\'\'", str)){
-                charByte = lerNovoCaractere();
+                charByte = this.scanner.readCharacter();
                 str += String.valueOf((char)charByte);
             }
         } else if(Pattern.matches("\"", str)) {
             int charByte;
             StringBuilder strBuilder = new StringBuilder(str);
-            while((charByte = lerNovoCaractere()) != -1) {
+            while((charByte = this.scanner.readCharacter()) != -1) {
                 String caractere = String.valueOf((char)charByte);
 
                 if(caractere.charAt(0) == '\\') {
-                    charByte = lerNovoCaractere();
+                    charByte = this.scanner.readCharacter();
                     String aux = String.valueOf((char)charByte);
                     if(Pattern.matches("\"", aux)) {
                         strBuilder.append(aux);
@@ -91,26 +80,26 @@ public class AnalisadorLexico {
             }
             str = strBuilder.toString();
         }
-        System.out.println(str + " " + linha + " " + (coluna - str.length() + 1));
+        System.out.println(str + " " + scanner.getLine() + " " + (scanner.getColumn() - str.length() + 1));
     }
 
     public void comentarioHandler(String str) {
         int charByte;
         if(Pattern.matches("//", str)) {
-            while((charByte = lerNovoCaractere()) != -1) {
+            while((charByte = this.scanner.readCharacter()) != -1) {
                 if((char)charByte == '\n') {
                     break;
                 }
             }
-            novaLinha();
+            this.scanner.newLine();
         }
         if(Pattern.matches("/\\*", str)) {
-            while((charByte = lerNovoCaractere()) != -1) {
+            while((charByte = this.scanner.readCharacter()) != -1) {
                 if((char)charByte == '\n') {
-                    novaLinha();
+                    this.scanner.newLine();
                 }
                 if((char)charByte == '*') {
-                    charByte = lerNovoCaractere();
+                    charByte = this.scanner.readCharacter();
                     if((char)charByte == '/') {
                         break;
                     }
@@ -122,16 +111,16 @@ public class AnalisadorLexico {
     public void identificadorHandler(String str) {
         StringBuilder stringBuilder = new StringBuilder(str);
         int charByte;
-        while((charByte = lerNovoCaractere()) != -1) {
+        while((charByte = this.scanner.readCharacter()) != -1) {
             String character = String.valueOf((char)charByte);
 
             if((char)charByte == '\r') {
-                charByte = lerNovoCaractere();
+                charByte = this.scanner.readCharacter();
                 character += String.valueOf((char)charByte);
             }
             if(ehSeparador(character) || ehOperador(character)) {
                 str = stringBuilder.toString();
-                System.out.println(str + " " + linha + " " + (coluna - str.length()));
+                System.out.println(str + " " + scanner.getLine() + " " + (scanner.getColumn() - str.length()));
                 identificarTipo(character);
                 break;
             }
@@ -143,32 +132,32 @@ public class AnalisadorLexico {
     public void operadorHandler(String str) {
         if(str.length() < 2) {
             int charByte;
-            if((charByte = lerNovoCaractere()) != -1) {
+            if((charByte = this.scanner.readCharacter()) != -1) {
                 str += (char)charByte;
                 if(ehOperador(str)) {
-                    System.out.println(str + " " + linha + (coluna - str.length()));
+                    System.out.println(str + " " + scanner.getLine() + (scanner.getColumn() - str.length()));
                 } else {
-                    System.out.println(str.charAt(0) + " " + linha + " " + (coluna - str.length() - 1));
+                    System.out.println(str.charAt(0) + " " + scanner.getLine() + " " + (scanner.getColumn() - str.length() - 1));
                     if(ehSeparador(str.substring(1))) {
                         separadorHandler(str.substring(1));
                     }
                 }
             }
         } else {
-            System.out.println(str + " " + linha + " " + (coluna - str.length()));
+            System.out.println(str + " " + scanner.getLine() + " " + (scanner.getColumn() - str.length()));
         }
     }
 
     public void numericoHandler(String str) {
         StringBuilder stringBuilder = new StringBuilder(str);
         int charByte;
-        while((charByte = lerNovoCaractere()) != -1) {
+        while((charByte = this.scanner.readCharacter()) != -1) {
             String character = String.valueOf((char)charByte);
             if(Pattern.matches("\\.", character)) {
-                charByte = lerNovoCaractere();
+                charByte = this.scanner.readCharacter();
                 character += String.valueOf((char)charByte);
                 if(!ehNumerico(stringBuilder.toString().concat(character))) {
-                    System.out.println(stringBuilder.toString() + " " + linha + " " + (coluna - stringBuilder.toString().length()));
+                    System.out.println(stringBuilder.toString() + " " + scanner.getLine() + " " + (scanner.getColumn() - stringBuilder.toString().length()));
                     identificarTipo(character);
                     return;
                 }
@@ -183,7 +172,7 @@ public class AnalisadorLexico {
             stringBuilder.append(character);
         }
         str = stringBuilder.toString();
-        System.out.println(str + " " + linha + " " + (coluna - str.length()));
+        System.out.println(str + " " + scanner.getLine() + " " + (scanner.getColumn() - str.length()));
         identificarTipo(String.valueOf((char)charByte));
     }
 
@@ -213,48 +202,35 @@ public class AnalisadorLexico {
         }
     }
 
-    public void executarAnaliseLexica() {
-        this.linha = 1;
-        this.coluna = 0;
-        int charByte;
-        while((charByte = lerNovoCaractere()) != -1) {
-            String character = String.valueOf((char)charByte);
+    public void executarAnaliseLexica(File codigoFonte) {
+        this.scanner = null;
+        try {
+            this.scanner = new Scanner(codigoFonte);
+            int charByte;
+            while((charByte = this.scanner.readCharacter()) != -1) {
+                String character = String.valueOf((char)charByte);
 
-            if(Pattern.matches("\r", character)) {
-                if((charByte = lerNovoCaractere()) != -1) {
-                    character += String.valueOf((char)charByte);
+                if(Pattern.matches("\r", character)) {
+                    if((charByte = this.scanner.readCharacter()) != -1) {
+                        character += String.valueOf((char)charByte);
+                    }
                 }
-            }
 
-            if(Pattern.matches("/", character)) {
-                if((charByte = lerNovoCaractere()) != -1) {
-                    character += String.valueOf((char)charByte);
+                if(Pattern.matches("/", character)) {
+                    if((charByte = this.scanner.readCharacter()) != -1) {
+                        character += String.valueOf((char)charByte);
+                    }
                 }
+
+                identificarTipo(character);
             }
-
-            identificarTipo(character);
-        }
-        try{
-            this.fileReader.close();
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            if(scanner != null) {
+                scanner.close();
+            }
         }
-    }
-
-    private void novaLinha() {
-        this.linha++;
-        this.coluna = 0;
-    }
-
-    private int lerNovoCaractere() {
-        int charByte = -1;
-        try{
-            charByte = fileReader.read();
-            this.coluna++;
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        return charByte;
     }
 
 }
