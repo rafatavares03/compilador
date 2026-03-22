@@ -15,6 +15,7 @@ public class AnalisadorLexico {
     Pattern comentario = Pattern.compile("//|/\\*");
     Pattern identificador = Pattern.compile("[_a-zA-Z]");
     Pattern operador = Pattern.compile("\\+\\+?|--?|&&?|\\|\\|?|[*/]|(=[=+-]?)|[<>!]=?");
+    Pattern numerico = Pattern.compile("[0-9]+(\\.[0-9]+)?");
 
     public AnalisadorLexico(File codigoFonte) {
         try {
@@ -42,6 +43,10 @@ public class AnalisadorLexico {
 
     boolean ehOperador(String str) {
         return operador.matcher(str).matches();
+    }
+
+    boolean ehNumerico(String str) {
+        return numerico.matcher(str).matches();
     }
 
     public void separadorHandler(String str) {
@@ -143,7 +148,7 @@ public class AnalisadorLexico {
                 if(ehOperador(str)) {
                     System.out.println(str + " " + linha + (coluna - str.length()));
                 } else {
-                    System.out.println(str.charAt(0) + " " + linha + (coluna - str.length() - 1));
+                    System.out.println(str.charAt(0) + " " + linha + " " + (coluna - str.length() - 1));
                     if(ehSeparador(str.substring(1))) {
                         separadorHandler(str.substring(1));
                     }
@@ -152,6 +157,34 @@ public class AnalisadorLexico {
         } else {
             System.out.println(str + " " + linha + " " + (coluna - str.length()));
         }
+    }
+
+    public void numericoHandler(String str) {
+        StringBuilder stringBuilder = new StringBuilder(str);
+        int charByte;
+        while((charByte = lerNovoCaractere()) != -1) {
+            String character = String.valueOf((char)charByte);
+            if(Pattern.matches("\\.", character)) {
+                charByte = lerNovoCaractere();
+                character += String.valueOf((char)charByte);
+                if(!ehNumerico(stringBuilder.toString().concat(character))) {
+                    System.out.println(stringBuilder.toString() + " " + linha + " " + (coluna - stringBuilder.toString().length()));
+                    identificarTipo(character);
+                    return;
+                }
+                stringBuilder.append(character);
+                continue;
+            }
+
+            if(!ehNumerico(character)) {
+                break;
+            }
+
+            stringBuilder.append(character);
+        }
+        str = stringBuilder.toString();
+        System.out.println(str + " " + linha + " " + (coluna - str.length()));
+        identificarTipo(String.valueOf((char)charByte));
     }
 
     private void identificarTipo(String str) {
@@ -173,6 +206,10 @@ public class AnalisadorLexico {
 
         if(ehOperador(str)) {
             operadorHandler(str);
+        }
+
+        if(ehNumerico(str)) {
+            numericoHandler(str);
         }
     }
 
@@ -196,6 +233,11 @@ public class AnalisadorLexico {
             }
 
             identificarTipo(character);
+        }
+        try{
+            this.fileReader.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
