@@ -11,9 +11,10 @@ public class AnalisadorLexico {
     private int coluna;
     private final FileReader fileReader;
     Pattern separador = Pattern.compile("\r?\n|[\t (){};\\[\\]]");
-    Pattern literal = Pattern.compile("\'|\"");
+    Pattern literal = Pattern.compile("['\"]");
     Pattern comentario = Pattern.compile("//|/\\*");
     Pattern identificador = Pattern.compile("[_a-zA-Z]");
+    Pattern operador = Pattern.compile("\\+\\+?|--?|&&?|\\|\\|?|[*/]|(=[=+-]?)|[<>!]=?");
 
     public AnalisadorLexico(File codigoFonte) {
         try {
@@ -37,6 +38,10 @@ public class AnalisadorLexico {
 
     boolean ehIdentificador(String str) {
         return identificador.matcher(str).matches();
+    }
+
+    boolean ehOperador(String str) {
+        return operador.matcher(str).matches();
     }
 
     public void separadorHandler(String str) {
@@ -115,25 +120,59 @@ public class AnalisadorLexico {
         while((charByte = lerNovoCaractere()) != -1) {
             String character = String.valueOf((char)charByte);
 
-            if(ehSeparador(character)) {
-                str = stringBuilder.toString();
-                System.out.println(str + " " + linha + " " + (coluna - str.length()));
-                separadorHandler(character);
-                break;
-            }
-
             if((char)charByte == '\r') {
                 charByte = lerNovoCaractere();
                 character += String.valueOf((char)charByte);
-                if(ehSeparador(character)) {
-                    str = stringBuilder.toString();
-                    System.out.println(str + " " + linha + " " + (coluna - str.length()));
-                    separadorHandler(character);
-                    break;
-                }
+            }
+            if(ehSeparador(character) || ehOperador(character)) {
+                str = stringBuilder.toString();
+                System.out.println(str + " " + linha + " " + (coluna - str.length()));
+                identificarTipo(character);
+                break;
             }
 
             stringBuilder.append(character);
+        }
+    }
+
+    public void operadorHandler(String str) {
+        if(str.length() < 2) {
+            int charByte;
+            if((charByte = lerNovoCaractere()) != -1) {
+                str += (char)charByte;
+                if(ehOperador(str)) {
+                    System.out.println(str + " " + linha + (coluna - str.length()));
+                } else {
+                    System.out.println(str.charAt(0) + " " + linha + (coluna - str.length() - 1));
+                    if(ehSeparador(str.substring(1))) {
+                        separadorHandler(str.substring(1));
+                    }
+                }
+            }
+        } else {
+            System.out.println(str + " " + linha + " " + (coluna - str.length()));
+        }
+    }
+
+    private void identificarTipo(String str) {
+        if(ehComentario(str)) {
+            comentarioHandler(str);
+        }
+
+        if(ehSeparador(str)) {
+            separadorHandler(str);
+        }
+
+        if(ehLiteral(str)) {
+            literalHandler(str);
+        }
+
+        if(ehIdentificador(str)) {
+            identificadorHandler(str);
+        }
+
+        if(ehOperador(str)) {
+            operadorHandler(str);
         }
     }
 
@@ -154,22 +193,9 @@ public class AnalisadorLexico {
                 if((charByte = lerNovoCaractere()) != -1) {
                     character += String.valueOf((char)charByte);
                 }
-                if(ehComentario(character)) {
-                    comentarioHandler(character);
-                }
             }
 
-            if(ehSeparador(character)) {
-                separadorHandler(character);
-            }
-
-            if(ehLiteral(character)) {
-                literalHandler(character);
-            }
-
-            if(ehIdentificador(character)) {
-                identificadorHandler(character);
-            }
+            identificarTipo(character);
         }
     }
 
