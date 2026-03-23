@@ -5,12 +5,12 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 
-public class Scanner {
-    int line;
-    int column;
-    FileReader fileReader;
+public class FileScanner {
+    private int line;
+    private int column;
+    private final FileReader fileReader;
 
-    public Scanner(File file) throws FileNotFoundException {
+    public FileScanner(File file) throws FileNotFoundException {
         this.line = 1;
         this.column = 0;
         this.fileReader = new FileReader(file);
