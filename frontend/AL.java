@@ -25,6 +25,30 @@ public class AL {
 
     public boolean identificaTipo(String character) {
         boolean identificado = false;
+
+        if(character.equals("\r")) {
+            int charByte = fileScanner.readCharacter();
+            if(charByte != -1) {
+                character += String.valueOf((char)charByte);
+            }
+        }
+
+        if(character.equals("/")) {
+            int aux = fileScanner.readCharacter();
+            if(aux != -1) {
+                character += (char)aux;
+            }
+            if(!identificaTipo(character)) {
+                if(tiposHashMap.get(Tipos.SEPARADOR).matches(character.substring(1)) ||
+                        tiposHashMap.get(Tipos.NUMERICO).matches(character.substring(1)) ||
+                        tiposHashMap.get(Tipos.LITERAL).matches(character.substring((1))) ||
+                        tiposHashMap.get(Tipos.IDENTIFICADOR).matches(character.substring(1))) {
+                    System.out.println("/" + " " + fileScanner.getLine() + " " + Tipos.OPERADOR);
+                    identificaTipo(character.substring(1));
+                    return true;
+                }
+            }
+        }
         for(Map.Entry<Tipos, Tipo> tipo : tiposHashMap.entrySet()) {
             if(tipo.getValue().matches(character)) {
                 Lexema lexema = tipo.getValue().handleToken(character);
@@ -49,14 +73,6 @@ public class AL {
             int charByte;
             while((charByte = fileScanner.readCharacter()) != -1) {
                 String character = String.valueOf((char)charByte);
-
-                if(character.equals("/")) {
-                    int aux = fileScanner.readCharacter();
-                    if(aux != -1) {
-                        character += (char)aux;
-                    }
-                }
-
                 identificaTipo(character);
             }
         } catch (FileNotFoundException e) {

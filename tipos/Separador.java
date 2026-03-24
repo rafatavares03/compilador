@@ -14,7 +14,7 @@ public class Separador extends Tipo{
     @Override
     public Lexema handleToken(String character) {
         Lexema lexema = new Lexema();
-        if(Pattern.matches("[(){};\\[\\]]", character)) {
+        if(Pattern.matches("[(){};,\\[\\]]", character)) {
             lexema.setToken(character);
         }
         if(Pattern.matches("\r?\n", character)) {
