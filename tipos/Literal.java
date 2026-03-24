@@ -1,6 +1,7 @@
-package frontend.tipos;
+package tipos;
 
 import frontend.FileScanner;
+import token.Lexema;
 
 import java.util.regex.Pattern;
 
@@ -47,9 +48,8 @@ public class Literal extends Tipo{
     }
 
     @Override
-    public String handleToken(String character) {
+    public Lexema handleToken(String character) {
         String literal = (Pattern.matches("\'", character)) ? charLiteralHandler(character) : stringLiteralHandler(character);
-        System.out.println(literal + " " + fileScanner.getLine() + " " + (fileScanner.getColumn() - literal.length() + 1));
-        return "";
+        return new Lexema(literal, "");
     }
 }

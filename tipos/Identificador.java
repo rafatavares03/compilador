@@ -1,6 +1,7 @@
-package frontend.tipos;
+package tipos;
 
 import frontend.FileScanner;
+import token.Lexema;
 
 import java.util.regex.Pattern;
 
@@ -17,21 +18,19 @@ public class Identificador extends Tipo{
     }
 
     @Override
-    public String handleToken(String character) {
+    public Lexema handleToken(String character) {
+        Lexema lexema = new Lexema();
         StringBuilder stringBuilder = new StringBuilder(character);
         int charByte;
         while((charByte = this.fileScanner.readCharacter()) != -1) {
             String aux = String.valueOf((char)charByte);
-            if((char)charByte == '\r') {
-                charByte = this.fileScanner.readCharacter();
-                aux += String.valueOf((char)charByte);
-            }
             if(!isValidCharacter(aux)) {
-                System.out.println(stringBuilder.toString() + " " + fileScanner.getLine() + " " + (fileScanner.getColumn() - stringBuilder.toString().length()));
-                return aux;
+                lexema.setToken(stringBuilder.toString());
+                lexema.setNextChar(aux);
+                break;
             }
             stringBuilder.append(aux);
         }
-        return "";
+        return lexema;
     }
 }

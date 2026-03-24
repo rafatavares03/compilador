@@ -1,6 +1,7 @@
-package frontend.tipos;
+package tipos;
 
 import frontend.FileScanner;
+import token.Lexema;
 
 import java.util.regex.Pattern;
 
@@ -11,13 +12,14 @@ public class Separador extends Tipo{
     }
 
     @Override
-    public String handleToken(String character) {
+    public Lexema handleToken(String character) {
+        Lexema lexema = new Lexema();
         if(Pattern.matches("[(){};\\[\\]]", character)) {
-            System.out.println(character + " " + this.fileScanner.getLine() + " " + this.fileScanner.getColumn());
+            lexema.setToken(character);
         }
         if(Pattern.matches("\r?\n", character)) {
             this.fileScanner.newLine();
         }
-        return "";
+        return lexema;
     }
 }

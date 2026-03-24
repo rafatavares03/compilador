@@ -1,4 +1,6 @@
-package frontend;
+package token;
+
+import tipos.Tipos;
 
 public class Token {
     private final String valor;

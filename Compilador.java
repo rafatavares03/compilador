@@ -1,3 +1,4 @@
+import frontend.AL;
 import frontend.AnalisadorLexico;
 
 import java.io.File;
@@ -9,7 +10,8 @@ public class Compilador {
             throw new RuntimeException("O caminho de um código fonte deve ser especificado.");
         }
         File codigoFonte = new File(args[0]);
-        AnalisadorLexico analisadorLexico = new AnalisadorLexico();
+        AL analisadorLexico = new AL();
+        //AnalisadorLexico analisadorLexico = new AnalisadorLexico();
         analisadorLexico.executarAnaliseLexica(codigoFonte);
     }
 }

@@ -1,6 +1,7 @@
-package frontend.tipos;
+package tipos;
 
 import frontend.FileScanner;
+import token.Lexema;
 
 import java.util.regex.Pattern;
 
@@ -11,8 +12,9 @@ public class Numerico extends Tipo{
     }
 
     @Override
-    public String handleToken(String character) {
+    public Lexema handleToken(String character) {
         StringBuilder stringBuilder = new StringBuilder(character);
+        Lexema lexema = new Lexema();
         int charByte;
         while((charByte = this.fileScanner.readCharacter()) != -1) {
             String aux = String.valueOf((char)charByte);
@@ -20,8 +22,9 @@ public class Numerico extends Tipo{
                 charByte = this.fileScanner.readCharacter();
                 aux += String.valueOf((char)charByte);
                 if(!matches(stringBuilder.toString().concat(aux))) {
-                    System.out.println(stringBuilder.toString() + " " + fileScanner.getLine() + " " + (fileScanner.getColumn() - stringBuilder.toString().length()));
-                    return aux;
+                    lexema.setToken(stringBuilder.toString());
+                    lexema.setNextChar(aux);
+                    return lexema;
                 }
                 stringBuilder.append(aux);
                 continue;
@@ -33,8 +36,9 @@ public class Numerico extends Tipo{
 
             stringBuilder.append(aux);
         }
-        character = stringBuilder.toString();
-        System.out.println(character + " " + fileScanner.getLine() + " " + (fileScanner.getColumn() - character.length()));
-        return String.valueOf((char)charByte);
+
+        lexema.setToken(stringBuilder.toString());
+        lexema.setNextChar(String.valueOf((char)charByte));
+        return lexema;
     }
 }

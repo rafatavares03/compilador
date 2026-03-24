@@ -1,5 +1,6 @@
-package frontend.tipos;
+package tipos;
 import frontend.FileScanner;
+import token.Lexema;
 
 import java.util.regex.Pattern;
 
@@ -34,12 +35,12 @@ public class Comentario extends Tipo{
         }
     }
 
-    public String handleToken(String charactere) {
+    public Lexema handleToken(String charactere) {
         if(Pattern.matches("//", charactere)) {
             lineComment();
         } else {
             blockComment();
         }
-        return "";
+        return new Lexema();
     }
 }

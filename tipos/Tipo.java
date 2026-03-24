@@ -1,7 +1,8 @@
-package frontend.tipos;
+package tipos;
 
 import java.util.regex.Pattern;
 import frontend.FileScanner;
+import token.Lexema;
 
 public abstract class Tipo {
     protected Pattern pattern;
@@ -10,5 +11,5 @@ public abstract class Tipo {
     public boolean matches(String token) {
         return pattern.matcher(token).matches();
     }
-    public abstract String handleToken(String character);
+    public abstract Lexema handleToken(String character);
 }
