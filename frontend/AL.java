@@ -2,15 +2,19 @@ package frontend;
 
 import tipos.*;
 import token.Lexema;
+import token.Token;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.Map;
 
 public class AL {
     FileScanner fileScanner;
     HashMap<Tipos,Tipo> tiposHashMap;
+    Deque<Token> tokens;
 
     private HashMap<Tipos,Tipo> gerarHashDeTipo(FileScanner fileScanner) {
         HashMap<Tipos, Tipo> hash = new HashMap<>();
@@ -20,11 +24,13 @@ public class AL {
         hash.put(Tipos.NUMERICO, new Numerico(fileScanner));
         hash.put(Tipos.OPERADOR, new Operador(fileScanner));
         hash.put(Tipos.SEPARADOR, new Separador(fileScanner));
+        hash.put(Tipos.PALAVRA_RESERVADA, new PalavraReservada(fileScanner));
         return hash;
     }
 
     public boolean identificaTipo(String character) {
         boolean identificado = false;
+        int pivo = fileScanner.getColumn() - character.length() + 1;
 
         if(character.equals("\r")) {
             int charByte = fileScanner.readCharacter();
@@ -40,7 +46,7 @@ public class AL {
             }
             if(!identificaTipo(character)) {
                 if(!tiposHashMap.get(Tipos.OPERADOR).matches(character.substring(1))) {
-                    System.out.println("/" + " " + fileScanner.getLine() + " " + Tipos.OPERADOR);
+                    Token token = new Token("/", Tipos.OPERADOR, this.tokens.size(), fileScanner.getLine(), pivo);
                     identificaTipo(character.substring(1));
                 }
             }
@@ -51,7 +57,13 @@ public class AL {
             if(tipo.getValue().matches(character)) {
                 Lexema lexema = tipo.getValue().handleToken(character);
                 if(!lexema.getToken().isEmpty()) {
-                    System.out.println(lexema.getToken() + " " + fileScanner.getLine() + " " + tipo.getKey());
+                    Token token;
+                    if(tipo.getKey() == Tipos.IDENTIFICADOR && tiposHashMap.get(Tipos.PALAVRA_RESERVADA).matches(lexema.getToken())) {
+                        token = new Token(lexema.getToken(), Tipos.PALAVRA_RESERVADA, this.tokens.size(), fileScanner.getLine(), pivo);
+                    } else {
+                        token = new Token(lexema.getToken(), tipo.getKey(), this.tokens.size(), fileScanner.getLine(), pivo);
+                    }
+                    tokens.addLast(token);
                 }
                 if(!lexema.getNextChar().isEmpty()) {
                     identificaTipo(lexema.getNextChar());
@@ -63,8 +75,9 @@ public class AL {
         return identificado;
     }
 
-    public void executarAnaliseLexica(File codigoFonte) {
+    public Deque<Token> executarAnaliseLexica(File codigoFonte) {
         this.fileScanner = null;
+        this.tokens = new ArrayDeque<Token>();
         try {
             fileScanner = new FileScanner(codigoFonte);
             tiposHashMap = gerarHashDeTipo(fileScanner);
@@ -76,7 +89,8 @@ public class AL {
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e);
         } finally {
-            this.fileScanner.close();
+            if(this.fileScanner != null) this.fileScanner.close();
         }
+        return this.tokens;
     }
 }
