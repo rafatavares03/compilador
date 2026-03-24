@@ -1,4 +1,4 @@
-package frontend;
+package tipos;
 
 public enum Tipos {
     LITERAL,

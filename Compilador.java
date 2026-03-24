@@ -1,6 +1,8 @@
 import frontend.AnalisadorLexico;
+import token.Token;
 
 import java.io.File;
+import java.util.Deque;
 
 public class Compilador {
 
@@ -10,6 +12,16 @@ public class Compilador {
         }
         File codigoFonte = new File(args[0]);
         AnalisadorLexico analisadorLexico = new AnalisadorLexico();
-        analisadorLexico.executarAnaliseLexica(codigoFonte);
+        Deque<Token> tokens = analisadorLexico.executarAnaliseLexica(codigoFonte);
+        System.out.printf("%-5s %-40s %-20s %-5s %-5s%n", "ID", "TOKEN", "CLASSE", "LINHA", "COLUNA");
+        for(Token token : tokens) {
+            System.out.printf("%-5d %-40s %-20s %-5d %-5d%n",
+                    token.getId(),
+                    token.getValor(),
+                    token.getTipo(),
+                    token.getLinha(),
+                    token.getColuna()
+            );
+        }
     }
 }

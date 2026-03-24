@@ -1,4 +1,6 @@
-package frontend;
+package token;
+
+import tipos.Tipos;
 
 public class Token {
     private final String valor;
@@ -13,5 +15,25 @@ public class Token {
         this. id = id;
         this.linha = linha;
         this.coluna = coluna;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public int getColuna() {
+        return coluna;
+    }
+
+    public int getLinha() {
+        return linha;
+    }
+
+    public String getValor() {
+        return valor;
+    }
+
+    public Tipos getTipo() {
+        return tipo;
     }
 }
