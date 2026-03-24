@@ -11,5 +11,7 @@ public abstract class Tipo {
     public boolean matches(String token) {
         return pattern.matcher(token).matches();
     }
-    public abstract Lexema handleToken(String character);
+    public Lexema handleToken(String character) {
+        return new Lexema();
+    };
 }
