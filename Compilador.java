@@ -1,4 +1,4 @@
-import frontend.AL;
+import frontend.AnalisadorLexico;
 import token.Token;
 
 import java.io.File;
@@ -11,8 +11,7 @@ public class Compilador {
             throw new RuntimeException("O caminho de um código fonte deve ser especificado.");
         }
         File codigoFonte = new File(args[0]);
-        AL analisadorLexico = new AL();
-        //AnalisadorLexico analisadorLexico = new AnalisadorLexico();
+        AnalisadorLexico analisadorLexico = new AnalisadorLexico();
         Deque<Token> tokens = analisadorLexico.executarAnaliseLexica(codigoFonte);
         System.out.printf("%-5s %-40s %-20s %-5s %-5s%n", "ID", "TOKEN", "CLASSE", "LINHA", "COLUNA");
         for(Token token : tokens) {
