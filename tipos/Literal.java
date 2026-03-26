@@ -17,6 +17,10 @@ public class Literal extends Tipo{
         if(!Pattern.matches("\'\'", character)){
             charByte = this.fileScanner.readCharacter();
             character += String.valueOf((char)charByte);
+            if(character.charAt(1) == '\\') {
+                charByte = this.fileScanner.readCharacter();
+                character += String.valueOf((char)charByte);               
+            }
         }
         return character;
     }
