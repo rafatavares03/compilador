@@ -21,7 +21,7 @@ public class Operador extends Tipo{
                 if (matches(character)) {
                     lexema.setToken(character);
                 } else {
-                    lexema.setToken(character);
+                    lexema.setToken(character.substring(0,1));
                     lexema.setNextChar(character.substring(1));
                 }
             }
