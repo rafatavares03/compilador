@@ -20,7 +20,7 @@ public class Comentario extends Tipo{
         this.fileScanner.newLine();
     }
 
-    private void blockComment() {
+    private void blockComment(Lexema lexema) {
         int charByte;
         while((charByte = this.fileScanner.readCharacter()) != -1) {
             if((char)charByte == '\n') {
@@ -29,18 +29,21 @@ public class Comentario extends Tipo{
             if((char)charByte == '*') {
                 charByte = this.fileScanner.readCharacter();
                 if((char)charByte == '/') {
-                    break;
+                    return;
                 }
             }
         }
+        lexema.setInvalid();
+        lexema.setErrorMsg("ERRO: comentário de bloco não delimitado.");
     }
 
     public Lexema handleToken(String charactere) {
+        Lexema lexema = new Lexema();
         if(Pattern.matches("//", charactere)) {
             lineComment();
         } else {
-            blockComment();
+            blockComment(lexema);
         }
-        return new Lexema();
+        return lexema;
     }
 }

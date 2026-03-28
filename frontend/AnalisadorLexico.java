@@ -10,11 +10,14 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 public class AnalisadorLexico {
-    FileScanner fileScanner;
-    HashMap<Tipos,Tipo> tiposHashMap;
-    Deque<Token> tokens;
+    private FileScanner fileScanner;
+    private HashMap<Tipos,Tipo> tiposHashMap;
+    private Tipo palavrasReservadas = new PalavraReservada(this.fileScanner);
+    private Deque<Token> tokens;
+    private boolean errorDetected = false;
 
     private HashMap<Tipos,Tipo> gerarHashDeTipo(FileScanner fileScanner) {
         HashMap<Tipos, Tipo> hash = new HashMap<>();
@@ -24,13 +27,37 @@ public class AnalisadorLexico {
         hash.put(Tipos.NUMERICO, new Numerico(fileScanner));
         hash.put(Tipos.OPERADOR, new Operador(fileScanner));
         hash.put(Tipos.SEPARADOR, new Separador(fileScanner));
-        hash.put(Tipos.PALAVRA_RESERVADA, new PalavraReservada(fileScanner));
         return hash;
+    }
+
+    private void erroHandler(String character, String erroMsg, int linha, int coluna) {
+        this.errorDetected = true;
+        StringBuilder stringBuilder = new StringBuilder(character);
+        int charByte;
+        while((charByte = fileScanner.readCharacter()) != -1) {
+            String aux = String.valueOf((char)charByte);
+            if(Pattern.matches(" |\r|\n", aux)) {
+                break;
+            }
+            stringBuilder.append(aux);
+        }
+        String str = stringBuilder.toString();
+        if(erroMsg.isEmpty()) {
+            if(str.length() > 1) {
+                System.out.println("ERRO: sequência de caracteres inválida " + str);
+            } else {
+                System.out.println("ERRO: caracter inválido " + str);
+            }
+        } else {
+            System.out.println(erroMsg + " " + str);
+        }
+        System.out.println("\t\tna linha " + linha + " coluna " + coluna);
     }
 
     public boolean identificaTipo(String character) {
         boolean identificado = false;
         int pivo = fileScanner.getColumn() - character.length() + 1;
+        int pivoLinha = fileScanner.getLine();
 
         if(character.equals("\r")) {
             int charByte = fileScanner.readCharacter();
@@ -49,6 +76,8 @@ public class AnalisadorLexico {
                     Token token = new Token("/", Tipos.OPERADOR, this.tokens.size(), fileScanner.getLine(), pivo);
                     tokens.addLast(token);
                     identificaTipo(character.substring(1));
+                } else {
+                    erroHandler(character, "", pivoLinha, pivo);
                 }
             }
             return true;
@@ -57,9 +86,13 @@ public class AnalisadorLexico {
         for(Map.Entry<Tipos, Tipo> tipo : tiposHashMap.entrySet()) {
             if(tipo.getValue().matches(character)) {
                 Lexema lexema = tipo.getValue().handleToken(character);
+                if(!lexema.isValid()) {
+                    erroHandler((lexema.getToken().isEmpty() ? character : lexema.getToken()), lexema.getErrorMsg(), pivoLinha, pivo);
+                    return true;
+                }
                 if(!lexema.getToken().isEmpty()) {
                     Token token;
-                    if(tipo.getKey() == Tipos.IDENTIFICADOR && tiposHashMap.get(Tipos.PALAVRA_RESERVADA).matches(lexema.getToken())) {
+                    if(tipo.getKey() == Tipos.IDENTIFICADOR && palavrasReservadas.matches(lexema.getToken())) {
                         token = new Token(lexema.getToken(), Tipos.PALAVRA_RESERVADA, this.tokens.size(), fileScanner.getLine(), pivo);
                     } else {
                         token = new Token(lexema.getToken(), tipo.getKey(), this.tokens.size(), fileScanner.getLine(), pivo);
@@ -93,5 +126,9 @@ public class AnalisadorLexico {
             if(this.fileScanner != null) this.fileScanner.close();
         }
         return this.tokens;
+    }
+
+    public boolean hasError() {
+        return this.errorDetected;
     }
 }
