@@ -15,18 +15,18 @@ import java.util.regex.Pattern;
 public class AnalisadorLexico {
     private FileScanner fileScanner;
     private HashMap<Tipos,Tipo> tiposHashMap;
-    private Tipo palavrasReservadas = new PalavraReservada(this.fileScanner);
+    private final Tipo palavrasReservadas = new PalavraReservada(this.fileScanner);
     private Deque<Token> tokens;
     private boolean errorDetected = false;
 
     private HashMap<Tipos,Tipo> gerarHashDeTipo(FileScanner fileScanner) {
         HashMap<Tipos, Tipo> hash = new HashMap<>();
-        hash.put(Tipos.COMENTARIO, new Comentario(fileScanner));
-        hash.put(Tipos.IDENTIFICADOR, new Identificador(fileScanner));
-        hash.put(Tipos.LITERAL, new Literal(fileScanner));
-        hash.put(Tipos.NUMERICO, new Numerico(fileScanner));
-        hash.put(Tipos.OPERADOR, new Operador(fileScanner));
         hash.put(Tipos.SEPARADOR, new Separador(fileScanner));
+        hash.put(Tipos.NUMERICO, new Numerico(fileScanner));
+        hash.put(Tipos.COMENTARIO, new Comentario(fileScanner));
+        hash.put(Tipos.LITERAL, new Literal(fileScanner));
+        hash.put(Tipos.OPERADOR, new Operador(fileScanner));
+        hash.put(Tipos.IDENTIFICADOR, new Identificador(fileScanner));
         return hash;
     }
 
@@ -51,7 +51,7 @@ public class AnalisadorLexico {
         } else {
             System.out.println(erroMsg + " " + str);
         }
-        System.out.println("\t\tna linha " + linha + " coluna " + coluna);
+        System.out.println("\t\tdetectado na linha " + linha + " coluna " + coluna);
     }
 
     public boolean identificaTipo(String character) {

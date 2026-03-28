@@ -6,9 +6,15 @@ import token.Lexema;
 import java.util.regex.Pattern;
 
 public class Literal extends Tipo{
+    private final Pattern validLiteral = Pattern.compile("'([^\\\\']|\\\\.)?'|\".*\"");
+
     public Literal(FileScanner fileScanner) {
         super.pattern = Pattern.compile("['\"]");
         super.fileScanner = fileScanner;
+    }
+
+    private boolean isValid(String literal) {
+        return validLiteral.matcher(literal).matches();
     }
 
     private String charLiteralHandler(String character) {
@@ -44,7 +50,7 @@ public class Literal extends Tipo{
                 strBuilder.append(caractere);
             }
 
-            if(Pattern.matches("\"", caractere)) {
+            if(Pattern.matches("\"|\n", caractere)) {
                 break;
             }
         }
@@ -54,6 +60,15 @@ public class Literal extends Tipo{
     @Override
     public Lexema handleToken(String character) {
         String literal = (Pattern.matches("\'", character)) ? charLiteralHandler(character) : stringLiteralHandler(character);
-        return new Lexema(literal, "");
+        Lexema lexema = new Lexema(literal, "");
+        if(!isValid(literal)) {
+            lexema.setInvalid();
+            if(literal.charAt(0) != literal.charAt(literal.length()-1) && Pattern.matches("[ \r\n]", literal.substring(literal.length()-1))) {
+                lexema.setErrorMsg("ERRO: literal não encerrado");
+            } else {
+                lexema.setErrorMsg("ERRO: literal inválido");
+            }
+        }
+        return lexema;
     }
 }
