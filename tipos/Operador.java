@@ -7,7 +7,7 @@ import java.util.regex.Pattern;
 
 public class Operador extends Tipo{
     public Operador(FileScanner fileScanner) {
-        super.pattern = Pattern.compile("\\+\\+?|--?|&&?|\\|\\|?|[*/]|(=[=+-]?)|[<>!]=?");;
+        super.pattern = Pattern.compile("\\+\\+?|--?|&&?|\\|\\|?|[*/]|(=[=+-]?)|[<>!]=?");
         super.fileScanner = fileScanner;
     }
 
@@ -20,6 +20,13 @@ public class Operador extends Tipo{
                 character += (char) charByte;
                 if (matches(character)) {
                     lexema.setToken(character);
+                } else if(matches(character.substring(1))) {
+                    lexema.setToken(character);
+                    lexema.setInvalid();
+                } else if(Pattern.matches("[|&]", character.substring(0,1)) && character.charAt(0) != character.charAt(1)) {
+                    lexema.setToken(character);
+                    lexema.setInvalid();
+                    lexema.setErrorMsg("ERRO: operador lógico inválido. Você queria dizer " + character.charAt(0) + character.charAt(0) + "?");
                 } else {
                     lexema.setToken(character.substring(0,1));
                     lexema.setNextChar(character.substring(1));

@@ -72,7 +72,8 @@ public class AnalisadorLexico {
                 character += (char)aux;
             }
             if(!identificaTipo(character)) {
-                if(!tiposHashMap.get(Tipos.OPERADOR).matches(character.substring(1))) {
+                if(!tiposHashMap.get(Tipos.OPERADOR).matches(character.substring(1)) ||
+                    !tiposHashMap.get(Tipos.LITERAL).matches(character.substring(1))) {
                     Token token = new Token("/", Tipos.OPERADOR, this.tokens.size(), fileScanner.getLine(), pivo);
                     tokens.addLast(token);
                     identificaTipo(character.substring(1));
