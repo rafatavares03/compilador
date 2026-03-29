@@ -19,6 +19,11 @@ public class Numerico extends Tipo{
         while((charByte = this.fileScanner.readCharacter()) != -1) {
             String aux = String.valueOf((char)charByte);
             if(Pattern.matches("\\.", aux)) {
+                if(stringBuilder.toString().indexOf('.') >= 0) {
+                    lexema.setToken(stringBuilder.toString().concat(aux));
+                    lexema.setInvalid();
+                    return lexema;
+                }
                 charByte = this.fileScanner.readCharacter();
                 aux += String.valueOf((char)charByte);
                 if(!matches(stringBuilder.toString().concat(aux))) {

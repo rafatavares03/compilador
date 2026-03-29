@@ -30,7 +30,7 @@ public class AnalisadorLexico {
         return hash;
     }
 
-    private void erroHandler(String character, String erroMsg, int linha, int coluna) {
+    private void errorHandler(String character, String erroMsg, int linha, int coluna) {
         this.errorDetected = true;
         StringBuilder stringBuilder = new StringBuilder(character);
         int charByte;
@@ -46,7 +46,7 @@ public class AnalisadorLexico {
             if(str.length() > 1) {
                 System.out.println("ERRO: sequência de caracteres inválida " + str);
             } else {
-                System.out.println("ERRO: caracter inválido " + str);
+                System.out.println("ERRO: caractere inválido " + str);
             }
         } else {
             System.out.println(erroMsg + " " + str);
@@ -77,7 +77,7 @@ public class AnalisadorLexico {
                     tokens.addLast(token);
                     identificaTipo(character.substring(1));
                 } else {
-                    erroHandler(character, "", pivoLinha, pivo);
+                    errorHandler(character, "", pivoLinha, pivo);
                 }
             }
             return true;
@@ -87,7 +87,7 @@ public class AnalisadorLexico {
             if(tipo.getValue().matches(character)) {
                 Lexema lexema = tipo.getValue().handleToken(character);
                 if(!lexema.isValid()) {
-                    erroHandler((lexema.getToken().isEmpty() ? character : lexema.getToken()), lexema.getErrorMsg(), pivoLinha, pivo);
+                    errorHandler((lexema.getToken().isEmpty() ? character : lexema.getToken()), lexema.getErrorMsg(), pivoLinha, pivo);
                     return true;
                 }
                 if(!lexema.getToken().isEmpty()) {

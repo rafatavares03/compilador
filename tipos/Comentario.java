@@ -34,7 +34,7 @@ public class Comentario extends Tipo{
             }
         }
         lexema.setInvalid();
-        lexema.setErrorMsg("ERRO: comentário de bloco não delimitado.");
+        lexema.setErrorMsg("ERRO: comentário de bloco não encerrado.");
     }
 
     public Lexema handleToken(String charactere) {
