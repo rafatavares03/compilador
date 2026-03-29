@@ -7,7 +7,7 @@ import java.util.regex.Pattern;
 
 public class Operador extends Tipo{
     public Operador(FileScanner fileScanner) {
-        super.pattern = Pattern.compile("\\+\\+?|--?|&&?|\\|\\|?|[*/]|(=[=+-]?)|[<>!]=?");
+        super.pattern = Pattern.compile("\\+\\+?|--?|&&?|\\|\\|?|[*/]|([=+-]?=)|[<>!]=?");
         super.fileScanner = fileScanner;
     }
 
