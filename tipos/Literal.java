@@ -63,9 +63,7 @@ public class Literal extends Tipo{
         Lexema lexema = new Lexema(literal, "");
         if(!isValid(literal)) {
             lexema.setInvalid();
-            if(literal.charAt(0) != literal.charAt(literal.length()-1)) {
-                lexema.setErrorMsg("ERRO: literal não encerrado ou inválido");
-            }
+            lexema.setErrorMsg("ERRO: literal não encerrado ou inválido");
         }
         return lexema;
     }

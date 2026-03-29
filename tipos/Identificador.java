@@ -25,12 +25,12 @@ public class Identificador extends Tipo{
         while((charByte = this.fileScanner.readCharacter()) != -1) {
             String aux = String.valueOf((char)charByte);
             if(!isValidCharacter(aux)) {
-                lexema.setToken(stringBuilder.toString());
-                lexema.setNextChar(aux);
                 break;
             }
             stringBuilder.append(aux);
         }
+        lexema.setToken(stringBuilder.toString());
+        if(charByte != -1) lexema.setNextChar(String.valueOf((char)charByte));
         return lexema;
     }
 }

@@ -36,7 +36,7 @@ public class AnalisadorLexico {
         int charByte;
         while((charByte = fileScanner.readCharacter()) != -1) {
             String aux = String.valueOf((char)charByte);
-            if(Pattern.matches(" |\r|\n", aux)) {
+            if(Pattern.matches(" |\r?\n", aux)) {
                 break;
             }
             stringBuilder.append(aux);
@@ -54,8 +54,12 @@ public class AnalisadorLexico {
         System.out.println("\t\tdetectado na linha " + linha + " coluna " + coluna);
     }
 
-    public boolean identificaTipo(String character) {
-        boolean identificado = false;
+    private void criaToken(String valor, Tipos tipo, int id, int linha, int coluna) {
+        Token token = new Token(valor, tipo, id, linha, coluna);
+        tokens.addLast(token);
+    }
+
+    public void identificaTipo(String character) {
         int pivo = fileScanner.getColumn() - character.length() + 1;
         int pivoLinha = fileScanner.getLine();
 
@@ -71,43 +75,43 @@ public class AnalisadorLexico {
             if(aux != -1) {
                 character += (char)aux;
             }
-            if(!identificaTipo(character)) {
-                if(!tiposHashMap.get(Tipos.OPERADOR).matches(character.substring(1)) ||
-                    !tiposHashMap.get(Tipos.LITERAL).matches(character.substring(1))) {
-                    Token token = new Token("/", Tipos.OPERADOR, this.tokens.size(), fileScanner.getLine(), pivo);
-                    tokens.addLast(token);
-                    identificaTipo(character.substring(1));
-                } else {
-                    errorHandler(character, "", pivoLinha, pivo);
+            if(tiposHashMap.get(Tipos.COMENTARIO).matches(character)) {
+                Lexema lexema = tiposHashMap.get(Tipos.COMENTARIO).handleToken(character);
+                if(!lexema.isValid()) {
+                    errorHandler(character, lexema.getErrorMsg(), pivoLinha, pivo);
+                    return;
                 }
+            } else if(!tiposHashMap.get(Tipos.OPERADOR).matches(character.substring(1)) ||
+                        !tiposHashMap.get(Tipos.LITERAL).matches(character.substring(1))) {
+                criaToken("/", Tipos.OPERADOR, this.tokens.size(), fileScanner.getLine(), pivo);
+                identificaTipo(character.substring(1));
+            } else {
+                errorHandler(character, "", pivoLinha, pivo);
             }
-            return true;
+            return;
         }
 
         for(Map.Entry<Tipos, Tipo> tipo : tiposHashMap.entrySet()) {
             if(tipo.getValue().matches(character)) {
                 Lexema lexema = tipo.getValue().handleToken(character);
                 if(!lexema.isValid()) {
-                    errorHandler((lexema.getToken().isEmpty() ? character : lexema.getToken()), lexema.getErrorMsg(), pivoLinha, pivo);
-                    return true;
+                    errorHandler( lexema.getToken(), lexema.getErrorMsg(), pivoLinha, pivo);
+                    return;
                 }
                 if(!lexema.getToken().isEmpty()) {
-                    Token token;
                     if(tipo.getKey() == Tipos.IDENTIFICADOR && palavrasReservadas.matches(lexema.getToken())) {
-                        token = new Token(lexema.getToken(), Tipos.PALAVRA_RESERVADA, this.tokens.size(), fileScanner.getLine(), pivo);
+                        criaToken(lexema.getToken(), Tipos.PALAVRA_RESERVADA, this.tokens.size(), fileScanner.getLine(), pivo);
                     } else {
-                        token = new Token(lexema.getToken(), tipo.getKey(), this.tokens.size(), fileScanner.getLine(), pivo);
+                        criaToken(lexema.getToken(), tipo.getKey(), this.tokens.size(), fileScanner.getLine(), pivo);
                     }
-                    tokens.addLast(token);
                 }
                 if(!lexema.getNextChar().isEmpty()) {
                     identificaTipo(lexema.getNextChar());
                 }
-                identificado = true;
-                break;
+                return;
             }
         }
-        return identificado;
+        errorHandler(character, "", pivoLinha, pivo);
     }
 
     public Deque<Token> executarAnaliseLexica(File codigoFonte) {

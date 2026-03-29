@@ -43,7 +43,7 @@ public class Numerico extends Tipo{
         }
 
         lexema.setToken(stringBuilder.toString());
-        lexema.setNextChar(String.valueOf((char)charByte));
+        if(charByte != -1) lexema.setNextChar(String.valueOf((char)charByte));
         return lexema;
     }
 }
