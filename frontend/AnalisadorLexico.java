@@ -39,17 +39,15 @@ public class AnalisadorLexico {
             if(Pattern.matches(" |\r?\n", aux)) {
                 break;
             }
-            stringBuilder.append(aux);
+            if(!aux.equals("\r")) stringBuilder.append(aux);
         }
         String str = stringBuilder.toString();
         if(erroMsg.isEmpty()) {
-            if(str.length() > 1) {
-                System.out.println("ERRO: sequência de caracteres inválida " + str);
-            } else {
-                System.out.println("ERRO: caractere inválido " + str);
-            }
+            System.out.println("ERRO: " + ((str.length() > 1) ? "sequência de caracteres inválida " : "caractere inválido "));
+            System.out.println("\t\t" + str);
         } else {
-            System.out.println(erroMsg + " " + str);
+            System.out.println(erroMsg);
+            System.out.println("\t\t" + str);
         }
         System.out.println("\t\tdetectado na linha " + linha + " coluna " + coluna);
     }
@@ -81,7 +79,7 @@ public class AnalisadorLexico {
                     errorHandler(character, lexema.getErrorMsg(), pivoLinha, pivo);
                     return;
                 }
-            } else if(!tiposHashMap.get(Tipos.OPERADOR).matches(character.substring(1)) ||
+            } else if(!tiposHashMap.get(Tipos.OPERADOR).matches(character.substring(1)) &&
                         !tiposHashMap.get(Tipos.LITERAL).matches(character.substring(1))) {
                 criaToken("/", Tipos.OPERADOR, this.tokens.size(), fileScanner.getLine(), pivo);
                 identificaTipo(character.substring(1));
