@@ -17,7 +17,7 @@ public class AnalisadorLexico {
     private HashMap<Tipos,Tipo> tiposHashMap;
     private final Tipo palavrasReservadas = new PalavraReservada(this.fileScanner);
     private Deque<Token> tokens;
-    private boolean errorDetected = false;
+    private boolean erroDetectado = false;
 
     private HashMap<Tipos,Tipo> gerarHashDeTipo(FileScanner fileScanner) {
         HashMap<Tipos, Tipo> hash = new HashMap<>();
@@ -31,7 +31,7 @@ public class AnalisadorLexico {
     }
 
     private void errorHandler(String character, String erroMsg, int linha, int coluna) {
-        this.errorDetected = true;
+        this.erroDetectado = true;
         StringBuilder stringBuilder = new StringBuilder(character);
         int charByte;
         while((charByte = fileScanner.readCharacter()) != -1) {
@@ -133,7 +133,7 @@ public class AnalisadorLexico {
         return this.tokens;
     }
 
-    public boolean hasError() {
-        return this.errorDetected;
+    public boolean temErroLexico() {
+        return this.erroDetectado;
     }
 }
