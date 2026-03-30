@@ -36,6 +36,11 @@ public class Numerico extends Tipo{
             }
 
             if(!matches(aux)) {
+                if(Pattern.matches("[a-zA-z'\"]", aux)) {
+                    lexema.setToken(stringBuilder.toString().concat(aux));
+                    lexema.setInvalid();
+                    return lexema;
+                }
                 break;
             }
 
