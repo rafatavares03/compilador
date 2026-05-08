@@ -1,10 +1,10 @@
-package tipos;
+package recursos;
 import frontend.FileScanner;
 import token.Lexema;
 
 import java.util.regex.Pattern;
 
-public class Comentario extends Tipo{
+public class Comentario extends Recurso {
     public Comentario(FileScanner fileScanner) {
         super.pattern = Pattern.compile("//|/\\*");
         super.fileScanner = fileScanner;

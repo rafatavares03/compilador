@@ -1,6 +1,6 @@
 package frontend;
 
-import tipos.*;
+import recursos.*;
 import token.Lexema;
 import token.Token;
 
@@ -14,19 +14,20 @@ import java.util.regex.Pattern;
 
 public class AnalisadorLexico {
     private FileScanner fileScanner;
-    private HashMap<Tipos,Tipo> tiposHashMap;
-    private final Tipo palavrasReservadas = new PalavraReservada(this.fileScanner);
+    private HashMap<Recursos, Recurso> tiposHashMap;
+    private final Recurso palavrasReservadas = new PalavraReservada(this.fileScanner);
+    private final Recurso tipo = new Tipo(this.fileScanner);
     private Deque<Token> tokens;
     private boolean erroDetectado = false;
 
-    private HashMap<Tipos,Tipo> gerarHashDeTipo(FileScanner fileScanner) {
-        HashMap<Tipos, Tipo> hash = new HashMap<>();
-        hash.put(Tipos.SEPARADOR, new Separador(fileScanner));
-        hash.put(Tipos.NUMERICO, new Numerico(fileScanner));
-        hash.put(Tipos.COMENTARIO, new Comentario(fileScanner));
-        hash.put(Tipos.LITERAL, new Literal(fileScanner));
-        hash.put(Tipos.OPERADOR, new Operador(fileScanner));
-        hash.put(Tipos.IDENTIFICADOR, new Identificador(fileScanner));
+    private HashMap<Recursos, Recurso> gerarHashDeTipo(FileScanner fileScanner) {
+        HashMap<Recursos, Recurso> hash = new HashMap<>();
+        hash.put(Recursos.SEPARADOR, new Separador(fileScanner));
+        hash.put(Recursos.NUMERICO, new Numerico(fileScanner));
+        hash.put(Recursos.COMENTARIO, new Comentario(fileScanner));
+        hash.put(Recursos.LITERAL, new Literal(fileScanner));
+        hash.put(Recursos.OPERADOR, new Operador(fileScanner));
+        hash.put(Recursos.IDENTIFICADOR, new Identificador(fileScanner));
         return hash;
     }
 
@@ -52,7 +53,7 @@ public class AnalisadorLexico {
         System.out.println("\t\tdetectado na linha " + linha + " coluna " + coluna);
     }
 
-    private void criaToken(String valor, Tipos tipo, int id, int linha, int coluna) {
+    private void criaToken(String valor, Recursos tipo, int id, int linha, int coluna) {
         Token token = new Token(valor, tipo, id, linha, coluna);
         tokens.addLast(token);
     }
@@ -73,15 +74,15 @@ public class AnalisadorLexico {
             if(aux != -1) {
                 character += (char)aux;
             }
-            if(tiposHashMap.get(Tipos.COMENTARIO).matches(character)) {
-                Lexema lexema = tiposHashMap.get(Tipos.COMENTARIO).handleToken(character);
+            if(tiposHashMap.get(Recursos.COMENTARIO).matches(character)) {
+                Lexema lexema = tiposHashMap.get(Recursos.COMENTARIO).handleToken(character);
                 if(!lexema.isValid()) {
                     errorHandler(character, lexema.getErrorMsg(), pivoLinha, pivo);
                     return;
                 }
-            } else if(!tiposHashMap.get(Tipos.OPERADOR).matches(character.substring(1)) &&
-                        !tiposHashMap.get(Tipos.LITERAL).matches(character.substring(1))) {
-                criaToken("/", Tipos.OPERADOR, this.tokens.size(), fileScanner.getLine(), pivo);
+            } else if(!tiposHashMap.get(Recursos.OPERADOR).matches(character.substring(1)) &&
+                        !tiposHashMap.get(Recursos.LITERAL).matches(character.substring(1))) {
+                criaToken("/", Recursos.OPERADOR, this.tokens.size(), fileScanner.getLine(), pivo);
                 identificaTipo(character.substring(1));
             } else {
                 errorHandler(character, "", pivoLinha, pivo);
@@ -89,7 +90,7 @@ public class AnalisadorLexico {
             return;
         }
 
-        for(Map.Entry<Tipos, Tipo> tipo : tiposHashMap.entrySet()) {
+        for(Map.Entry<Recursos, Recurso> tipo : tiposHashMap.entrySet()) {
             if(tipo.getValue().matches(character)) {
                 Lexema lexema = tipo.getValue().handleToken(character);
                 if(!lexema.isValid()) {
@@ -97,8 +98,10 @@ public class AnalisadorLexico {
                     return;
                 }
                 if(!lexema.getToken().isEmpty()) {
-                    if(tipo.getKey() == Tipos.IDENTIFICADOR && palavrasReservadas.matches(lexema.getToken())) {
-                        criaToken(lexema.getToken(), Tipos.PALAVRA_RESERVADA, this.tokens.size(), fileScanner.getLine(), pivo);
+                    if(tipo.getKey() == Recursos.IDENTIFICADOR && palavrasReservadas.matches(lexema.getToken())) {
+                        criaToken(lexema.getToken(), Recursos.PALAVRA_RESERVADA, this.tokens.size(), fileScanner.getLine(), pivo);
+                    } else if (tipo.getKey() == Recursos.IDENTIFICADOR && this.tipo.matches(lexema.getToken())) {
+                        criaToken(lexema.getToken(), Recursos.TIPO, this.tokens.size(), fileScanner.getLine(), pivo);
                     } else {
                         criaToken(lexema.getToken(), tipo.getKey(), this.tokens.size(), fileScanner.getLine(), pivo);
                     }

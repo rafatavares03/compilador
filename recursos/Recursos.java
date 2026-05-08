@@ -1,11 +1,12 @@
-package tipos;
+package recursos;
 
-public enum Tipos {
+public enum Recursos {
     LITERAL,
     COMENTARIO,
     NUMERICO,
     SEPARADOR,
     PALAVRA_RESERVADA,
     IDENTIFICADOR,
-    OPERADOR
+    OPERADOR,
+    TIPO
 }

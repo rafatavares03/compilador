@@ -1,11 +1,11 @@
-package tipos;
+package recursos;
 
 import frontend.FileScanner;
 import token.Lexema;
 
 import java.util.regex.Pattern;
 
-public class Separador extends Tipo{
+public class Separador extends Recurso {
     public Separador(FileScanner fileScanner) {
         super.pattern = Pattern.compile("\r?\n|[\t (){};,\\[\\]]");
         super.fileScanner = fileScanner;

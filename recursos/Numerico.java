@@ -1,11 +1,11 @@
-package tipos;
+package recursos;
 
 import frontend.FileScanner;
 import token.Lexema;
 
 import java.util.regex.Pattern;
 
-public class Numerico extends Tipo{
+public class Numerico extends Recurso {
     public Numerico(FileScanner fileScanner) {
         super.pattern = Pattern.compile("[0-9]+(\\.[0-9]+)?");
         super.fileScanner = fileScanner;

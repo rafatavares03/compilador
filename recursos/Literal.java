@@ -1,11 +1,11 @@
-package tipos;
+package recursos;
 
 import frontend.FileScanner;
 import token.Lexema;
 
 import java.util.regex.Pattern;
 
-public class Literal extends Tipo{
+public class Literal extends Recurso {
     private final Pattern validLiteral = Pattern.compile("'([^\\\\']|\\\\.)?'|\".*\"");
 
     public Literal(FileScanner fileScanner) {

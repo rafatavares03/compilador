@@ -1,6 +1,6 @@
 package token;
 
-import tipos.Tipos;
+import recursos.Recursos;
 
-public record Token(String valor, Tipos tipo, int id, int linha, int coluna) {
+public record Token(String valor, Recursos tipo, int id, int linha, int coluna) {
 }

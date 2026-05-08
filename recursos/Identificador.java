@@ -1,11 +1,11 @@
-package tipos;
+package recursos;
 
 import frontend.FileScanner;
 import token.Lexema;
 
 import java.util.regex.Pattern;
 
-public class Identificador extends Tipo{
+public class Identificador extends Recurso {
     protected Pattern validCharacter = Pattern.compile("\\w");
 
     public Identificador(FileScanner fileScanner) {

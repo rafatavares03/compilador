@@ -1,10 +1,10 @@
-package tipos;
+package recursos;
 
 import java.util.regex.Pattern;
 import frontend.FileScanner;
 import token.Lexema;
 
-public abstract class Tipo {
+public abstract class Recurso {
     protected Pattern pattern;
     protected FileScanner fileScanner;
 

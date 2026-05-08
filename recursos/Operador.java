@@ -1,11 +1,11 @@
-package tipos;
+package recursos;
 
 import frontend.FileScanner;
 import token.Lexema;
 
 import java.util.regex.Pattern;
 
-public class Operador extends Tipo{
+public class Operador extends Recurso {
     public Operador(FileScanner fileScanner) {
         super.pattern = Pattern.compile("\\+\\+?|--?|&&?|\\|\\|?|[*/]|([=+-]?=)|[<>!]=?");
         super.fileScanner = fileScanner;
