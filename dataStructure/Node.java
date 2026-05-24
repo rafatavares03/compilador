@@ -35,4 +35,22 @@ public class Node {
     public Sentencas getType() {
         return this.type;
     }
+
+    public void print(String prefixo) {
+
+        // Nó folha
+        if(token != null) {
+            System.out.println(prefixo + token.valor());
+        }
+
+        // Nó interno
+        else {
+            System.out.println(prefixo + type);
+        }
+
+        // Filhos
+        for(int i = childNodes.size()-1; i >= 0 ; i--) {
+            childNodes.get(i).print(prefixo + "  ");
+        }
+    }
 }

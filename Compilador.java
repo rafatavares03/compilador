@@ -14,8 +14,8 @@ public class Compilador {
         AnalisadorLexico lexico = new AnalisadorLexico();
         AnalisadorSintatico sintatico = new AnalisadorSintatico();
         Deque<Token> tokens = lexico.executarAnalise(codigoFonte);
-        //sintatico.executarAnalise(tokens);
-        //*
+        sintatico.executarAnalise(tokens);
+        /*
         if(!lexico.temErroLexico()) {
             System.out.printf("%-5s %-40s %-20s %-5s %-5s%n", "ID", "TOKEN", "CLASSE", "LINHA", "COLUNA");
             for(Token token : tokens) {
@@ -29,6 +29,6 @@ public class Compilador {
             }
 
         }
-        //*/
+        */
     }
 }
