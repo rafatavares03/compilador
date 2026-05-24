@@ -91,8 +91,55 @@ public class AnalisadorSintatico {
         S1(arvore);
     }
 
-    public Node condicao(Node arvore) {
-        return null;
+    public void condicao(Node arvore) {
+        if(listaDeTokens.getFirst().valor().equals("if")) {
+            arvore.addChild(new Node(listaDeTokens.removeFirst()));
+            if(!listaDeTokens.getFirst().valor().equals("(")) {
+                throw new RuntimeException("FALTOU O () NO IF");
+            }
+            arvore.addChild(new Node(listaDeTokens.removeFirst()));
+            expressao(arvore);
+            if(!listaDeTokens.getFirst().valor().equals(")")) {
+                throw new RuntimeException("PARENTESES NÃO FECHADO");
+            }
+            arvore.addChild(new Node(listaDeTokens.removeFirst()));
+            bloco(arvore);
+            C1(arvore);
+        }
+    }
+
+    private void C1(Node arvore) {
+        if(listaDeTokens.isEmpty()) return;
+        if(listaDeTokens.getFirst().valor().equals("}")) return;
+        if(listaDeTokens.getFirst().valor().equals("else")) {
+            arvore.addChild(new Node(listaDeTokens.removeFirst()));
+            C2(arvore);
+        }
+    }
+
+    private void C2(Node arvore) {
+        Token token = listaDeTokens.getFirst();
+        if(token.valor().equals("if")) {
+            condicao(arvore);
+            return;
+        }
+
+        if(token.valor().equals("{")) {
+            bloco(arvore);
+            return;
+        }
+    }
+
+    private void bloco(Node arvore) {
+        Token token = listaDeTokens.getFirst();
+        if(token.valor().equals("{")) {
+            arvore.addChild(new Node(listaDeTokens.removeFirst()));
+            sentenca(arvore);
+            if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals("}")) {
+                throw new RuntimeException("Bloco não fechado!");
+            }
+            arvore.addChild(new Node(listaDeTokens.removeFirst()));
+        }
     }
 
     public Node declaracao(Node arvore) {
@@ -294,7 +341,7 @@ public class AnalisadorSintatico {
 
         if(token.valor().equals("(")) {
             arvore.addChild(new Node(listaDeTokens.removeFirst()));
-            expressao(arvore);
+            expressaoLogica(arvore);
             arvore.addChild(new Node(listaDeTokens.removeFirst()));
             return;
         }
