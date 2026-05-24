@@ -7,5 +7,10 @@ public enum Sentencas {
     REPETICAO,
     DECLARACAO,
     ATRIBUICAO,
-    TOKEN
+    TOKEN,
+    OR,
+    AND,
+    EXPRESSAO_RELACIONAL,
+    EXPRESSAO_LOGICA,
+    EXPRESSAO_ARITMETICA
 }
