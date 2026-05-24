@@ -5,7 +5,6 @@ import recursos.Sentencas;
 import token.Token;
 import dataStructure.Node;
 
-import java.util.Comparator;
 import java.util.Deque;
 
 public class AnalisadorSintatico {
@@ -47,55 +46,56 @@ public class AnalisadorSintatico {
                 tokenValor.equals("!=");
     }
 
-    public Node sentenca(Node arvore) {
+    public void sentenca(Node arvore) {
         Token token = listaDeTokens.getFirst();
         Node folha = null;
         if(token.valor().equals("if")) {
             folha = new Node(Sentencas.CONDICAO);
+            arvore.addChild(folha);
             condicao(folha);
+            S1(arvore);
+            return;
         }
 
         if(token.tipo() == Recursos.TIPO) {
-            System.out.println(token.valor());
-            System.out.println(this.listaDeTokens.getFirst());
             folha = new Node(Sentencas.DECLARACAO);
+            arvore.addChild(folha);
             declaracao(folha);
             arvore.addChild(new Node(this.listaDeTokens.removeFirst()));
+            S1(arvore);
+            return;
         }
 
         if(a() || token.valor().equals("!") || token.valor().equals("(")) {
             folha = new Node(Sentencas.EXPRESSAO);
+            arvore.addChild(folha);
             expressao(folha);
+            S1(arvore);
+            return;
         }
 
         if(token.valor().equals("while") || token.valor().equals(("for"))) {
             folha = new Node(Sentencas.REPETICAO);
-            repeticao(folha);
-        }
-        if(folha != null) {
             arvore.addChild(folha);
+            repeticao(folha);
+            S1(arvore);
+            return;
         }
-        S1(arvore);
-
-        return null;
     }
 
-    public Node S1(Node arvore) {
+    public void S1(Node arvore) {
         if(listaDeTokens.isEmpty() || listaDeTokens.getFirst().valor().equals("}")) {
-            return null;
+            return;
         }
         sentenca(arvore);
         S1(arvore);
-        return arvore;
     }
 
     public Node condicao(Node arvore) {
-        System.out.println("IF");
         return null;
     }
 
     public Node declaracao(Node arvore) {
-        System.out.println(listaDeTokens.getFirst().valor());
         if(!(listaDeTokens.getFirst().tipo() == Recursos.TIPO)) {
             throw new RuntimeException("DECLARACAO SEM TIPO");
         }
@@ -121,7 +121,8 @@ public class AnalisadorSintatico {
     }
 
     private void D3(Node arvore) {
-        if(a()) {
+        Token token = listaDeTokens.getFirst();
+        if(a() || token.valor().equals("!") || token.valor().equals("(")) {
             expressaoLogica(arvore);
         }
     }
@@ -139,14 +140,14 @@ public class AnalisadorSintatico {
     }
 
     public Node expressao(Node arvore) {
-        if(a() || listaDeTokens.getFirst().equals("(") || listaDeTokens.getFirst().equals("!")) {
+        if(a() || listaDeTokens.getFirst().valor().equals("(") || listaDeTokens.getFirst().valor().equals("!")) {
             atribuicao(arvore);
         }
         return null;
     }
 
     public Node atribuicao(Node arvore) {
-        if(a() || listaDeTokens.getFirst().equals("(") || listaDeTokens.getFirst().equals("!")) {
+        if(a() || listaDeTokens.getFirst().valor().equals("(") || listaDeTokens.getFirst().valor().equals("!")) {
             expressaoLogica(arvore);
             ATR1(arvore);
         }
@@ -162,7 +163,8 @@ public class AnalisadorSintatico {
     }
 
     public void expressaoLogica(Node arvore) {
-        if(a()) {
+        Token token = listaDeTokens.getFirst();
+        if(a() || token.valor().equals("(") || token.valor().equals("!")) {
             TL(arvore);
             EL1(arvore);
         }
@@ -181,7 +183,8 @@ public class AnalisadorSintatico {
     }
 
     public void TL(Node arvore) {
-        if(a()) {
+        Token token = listaDeTokens.getFirst();
+        if(a() || token.valor().equals("(") || token.valor().equals("!")) {
             expressaoRelacional(arvore);
             TL1(arvore);
         }
@@ -204,7 +207,8 @@ public class AnalisadorSintatico {
     }
 
     public void expressaoRelacional(Node arvore) {
-        if(a()){
+        Token token = listaDeTokens.getFirst();
+        if(a() || token.valor().equals("(") || token.valor().equals("!")){
             expressaoAritmetica(arvore);
             ER1(arvore);
         }
@@ -227,7 +231,8 @@ public class AnalisadorSintatico {
     }
 
     public void expressaoAritmetica(Node arvore) {
-        if(a()) {
+        Token token = listaDeTokens.getFirst();
+        if(a() || token.valor().equals("(") || token.valor().equals("!")) {
             T(arvore);
             EA1(arvore);
         }
@@ -253,7 +258,8 @@ public class AnalisadorSintatico {
     }
 
     private void T(Node arvore) {
-        if(a()) {
+        Token token = listaDeTokens.getFirst();
+        if(a() || token.valor().equals("(") || token.valor().equals("!")) {
             F(arvore);
             T1(arvore);
         }
@@ -283,20 +289,23 @@ public class AnalisadorSintatico {
         if(token.valor().equals("!")) {
             arvore.addChild(new Node(listaDeTokens.removeFirst()));
             F(arvore);
+            return;
         }
 
         if(token.valor().equals("(")) {
             arvore.addChild(new Node(listaDeTokens.removeFirst()));
             expressao(arvore);
             arvore.addChild(new Node(listaDeTokens.removeFirst()));
+            return;
         }
 
         if(token.tipo() == Recursos.IDENTIFICADOR || token.tipo() == Recursos.NUMERICO) {
             arvore.addChild(new Node(listaDeTokens.removeFirst()));
             P(arvore);
+        } else {
+            arvore.addChild(new Node(listaDeTokens.removeFirst()));
         }
 
-        arvore.addChild(new Node(listaDeTokens.removeFirst()));
     }
 
     private void P(Node arvore) {
@@ -308,7 +317,6 @@ public class AnalisadorSintatico {
     }
 
     public Node repeticao(Node arvore) {
-        System.out.println("REPETIÇÃO");
         return null;
     }
 

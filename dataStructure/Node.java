@@ -49,8 +49,8 @@ public class Node {
         }
 
         // Filhos
-        for(int i = childNodes.size()-1; i >= 0 ; i--) {
-            childNodes.get(i).print(prefixo + "  ");
+        for(Node child : childNodes) {
+            child.print(prefixo + "  ");
         }
     }
 }
