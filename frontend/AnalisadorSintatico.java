@@ -61,35 +61,24 @@ public class AnalisadorSintatico {
 
     public void sentenca(Node arvore) {
         Token token = listaDeTokens.getFirst();
-        Node folha = null;
         if(token.valor().equals("if")) {
-            folha = new Node(Sentencas.CONDICAO);
-            arvore.addChild(folha);
-            condicao(folha);
+            arvore.addChild(condicao());
             S1(arvore);
             return;
         }
 
         if(token.tipo() == Recursos.TIPO) {
-            folha = new Node(Sentencas.DECLARACAO);
-            arvore.addChild(folha);
-            declaracao(folha);
+            arvore.addChild(declaracao());
+            if(!listaDeTokens.getFirst().valor().equals(";")) {
+                throw new RuntimeException("FALTOU ; DEPOIS DA DECLARACAO");
+            }
             consumirToken(arvore);
             S1(arvore);
             return;
         }
 
         if(a() || token.valor().equals("!") || token.valor().equals("(")) {
-            folha = new Node(Sentencas.ATRIBUICAO);
-            arvore.addChild(folha);
-            atribuicao(folha);
-            /*
-            if(folha.getChildNodes().get(1).getToken() != null &&
-               folha.getChildNodes().size() >= 2 &&
-               operadorDeAtribuicao(folha.getChildNodes().get(1).getToken().valor())) {
-                folha.setType(Sentencas.ATRIBUICAO);
-            }
-            */
+            arvore.addChild(atribuicao());
             if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals(";")) {
                 throw new RuntimeException("FALTOU ; APÓS EXPRESSÃO OU ATRIBUIÇÃO");
             }
@@ -99,9 +88,7 @@ public class AnalisadorSintatico {
         }
 
         if(token.valor().equals("while") || token.valor().equals(("for"))) {
-            folha = new Node(Sentencas.REPETICAO);
-            arvore.addChild(folha);
-            repeticao(folha);
+            arvore.addChild(repeticao());
             S1(arvore);
             return;
         }
@@ -115,42 +102,50 @@ public class AnalisadorSintatico {
         S1(arvore);
     }
 
-    public void condicao(Node arvore) {
-        if(listaDeTokens.getFirst().valor().equals("if")) {
-            consumirToken(arvore);
-            if(!listaDeTokens.getFirst().valor().equals("(")) {
-                throw new RuntimeException("FALTOU O () NO IF");
-            }
-            consumirToken(arvore);
-            arvore.addChild(expressao());
-            if(!listaDeTokens.getFirst().valor().equals(")")) {
-                throw new RuntimeException("PARENTESES NÃO FECHADO");
-            }
-            consumirToken(arvore);
-            bloco(arvore);
-            C1(arvore);
+    public Node condicao() {
+        if(!listaDeTokens.getFirst().valor().equals("if")) {
+            throw new RuntimeException("Condição iniciada incorretamente");
         }
+        Node NO = new Node(Sentencas.CONDICAO);
+        consumirToken(NO);
+        if(!listaDeTokens.getFirst().valor().equals("(")) {
+            throw new RuntimeException("FALTOU O () NO IF");
+        }
+        consumirToken(NO);
+        Node resultado = expressao();
+        if(resultado != null) {
+            NO.addChild(resultado);
+        }
+        if(!listaDeTokens.getFirst().valor().equals(")")) {
+            throw new RuntimeException("PARENTESES NÃO FECHADO");
+        }
+        consumirToken(NO);
+        bloco(NO);
+        C1(NO);
+        return NO;
     }
 
-    private void C1(Node arvore) {
+    private void C1(Node condicao) {
         if(listaDeTokens.isEmpty()) return;
         if(listaDeTokens.getFirst().valor().equals("}")) return;
         if(listaDeTokens.getFirst().valor().equals("else")) {
-            consumirToken(arvore);
-            C2(arvore);
+            consumirToken(condicao);
+            C2(condicao);
         }
     }
 
-    private void C2(Node arvore) {
+    private void C2(Node condicao) {
         Token token = listaDeTokens.getFirst();
         if(token.valor().equals("if")) {
-            condicao(arvore);
+            Node blocoIf = condicao();
+            if(blocoIf != null) {
+                condicao.addChild(blocoIf);
+            }
             return;
         }
 
         if(token.valor().equals("{")) {
-            bloco(arvore);
-            return;
+            bloco(condicao);
         }
     }
 
@@ -166,47 +161,100 @@ public class AnalisadorSintatico {
         }
     }
 
-    public Node declaracao(Node arvore) {
+    public Node declaracao() {
+        Node NO = new Node(Sentencas.DECLARACAO);
         if(!(listaDeTokens.getFirst().tipo() == Recursos.TIPO)) {
             throw new RuntimeException("DECLARACAO SEM TIPO");
         }
-        consumirToken(arvore);
+        consumirToken(NO);
         if(!(listaDeTokens.getFirst().tipo() == Recursos.IDENTIFICADOR)) {
             throw new RuntimeException("FALTA O NOME DO IDENTIFICADOR");
         }
-        consumirToken(arvore);
-        D2(arvore);
+        consumirToken(NO);
+        Node atribuicao = D2();
+        if(atribuicao != null) {
+            NO.addChild(atribuicao);
+        }
+        D1(NO);
+        return NO;
+    }
+
+    private void D1(Node declaracao) {
+        if(listaDeTokens.isEmpty()) return;
+        if(listaDeTokens.getFirst().valor().equals(";")) return;
+        if(listaDeTokens.getFirst().valor().equals(",")) {
+            consumirToken(declaracao);
+            if(listaDeTokens.getFirst().tipo() != Recursos.IDENTIFICADOR) {
+                throw new RuntimeException("IDENTIFICADOR ESPERADO");
+            }
+            Node atribuicao = D2();
+            if(atribuicao != null) {
+                declaracao.addChild(atribuicao);
+            }
+            D1(declaracao);
+        }
+    }
+
+    private Node D2() {
+        if(listaDeTokens.isEmpty()) return null;
+        Token token = listaDeTokens.getFirst();
+        if(token.valor().equals(",") || token.valor().equals(";")){
+            return null;
+        }
+        if(operadorDeAtribuicao()) {
+            Node operador = OP();
+            Node conteudo = D3();
+            if(operador == null|| conteudo == null) {
+                throw new RuntimeException("ERRO NA DECLARAÇÃO!");
+            }
+            operador.addChild(conteudo);
+            return operador;
+        }
         return null;
     }
 
-    private void D2(Node arvore) {
-        if(listaDeTokens.isEmpty()) return;
-        Token token = listaDeTokens.getFirst();
-        if(token.valor().equals(",") || token.valor().equals(";")){
-            return;
-        }
-        if(operadorDeAtribuicao()) {
-            OP(arvore);
-            D3(arvore);
-        }
-    }
-
-    private void D3(Node arvore) {
+    private Node D3() {
         Token token = listaDeTokens.getFirst();
         if(a() || token.valor().equals("!") || token.valor().equals("(")) {
-            arvore.addChild(expressaoLogica());
+            return expressaoLogica();
         }
+        return null;
     }
 
-    private void OP(Node arvore) {
+    private Node OP() {
         if(operadorDeAtribuicao()) {
-            consumirToken(arvore);
+            return new Node(listaDeTokens.removeFirst());
         }
+        return null;
     }
 
     public Node COMP() {
         if(!operadorDeComparacao()) return null;
         return new Node(listaDeTokens.removeFirst());
+    }
+
+    public Node atribuicao() {
+        if(a() || listaDeTokens.getFirst().valor().equals("(") || listaDeTokens.getFirst().valor().equals("!")) {
+            Node NO = new Node(Sentencas.ATRIBUICAO);
+            Node resultado = expressao();
+            NO.addChild(resultado);
+            ATR1(NO);
+            return NO;
+        }
+        return null;
+    }
+
+    public void ATR1(Node atribuicao) {
+        if(listaDeTokens.isEmpty()) return;
+        Token token = listaDeTokens.getFirst();
+        if(token.equals(")") || token.equals(";")) return;
+        Node operador = OP();
+        if(operador != null) {
+            Node filho = atribuicao.getChildNodes().get(0);
+            atribuicao.getChildNodes().set(0, filho.getChildNodes().get(0));
+            atribuicao.addChild(operador);
+            atribuicao.addChild(expressao().getChildNodes().get(0));
+        }
     }
 
     public Node expressao() {
@@ -217,24 +265,6 @@ public class AnalisadorSintatico {
             return NO;
         }
         return null;
-    }
-
-    public Node atribuicao(Node arvore) {
-        Node NO = new Node(Sentencas.ATRIBUICAO);
-        if(a() || listaDeTokens.getFirst().valor().equals("(") || listaDeTokens.getFirst().valor().equals("!")) {
-            arvore.addChild(NO);
-            arvore.addChild(expressao());
-            ATR1(arvore);
-        }
-        return null;
-    }
-
-    public void ATR1(Node arvore) {
-        if(listaDeTokens.isEmpty()) return;
-        Token token = listaDeTokens.getFirst();
-        if(token.equals(")") || token.equals(";")) return;
-        OP(arvore);
-        atribuicao(arvore);
     }
 
     public Node expressaoLogica() {
@@ -319,7 +349,6 @@ public class AnalisadorSintatico {
     }
 
     public Node expressaoAritmetica() {
-        Node NO = new Node(Sentencas.EXPRESSAO_ARITMETICA);
         Token token = listaDeTokens.getFirst();
         if(a() || token.valor().equals("(") || token.valor().equals("!")) {
             Node esquerda = T();
@@ -421,64 +450,70 @@ public class AnalisadorSintatico {
         return null;
     }
 
-    public void repeticao(Node arvore) {
+    public Node repeticao() {
+        Node NO = new Node(Sentencas.REPETICAO);
         if(listaDeTokens.getFirst().valor().equals("while")) {
-            consumirToken(arvore);
+            consumirToken(NO);
             if(!listaDeTokens.getFirst().valor().equals("(")) {
                 throw new RuntimeException("FALTOU O () NO WHILE!");
             }
-            consumirToken(arvore);
-            arvore.addChild(expressao());
+            consumirToken(NO);
+            Node resultado = expressao();
+            if(resultado != null) {
+                NO.addChild(resultado);
+            }
             if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals(")")) {
                 throw new RuntimeException("PARÊNTESES NÃO FECHADO");
             }
-            consumirToken(arvore);
-            bloco(arvore);
-            return;
+            consumirToken(NO);
+            bloco(NO);
+            return NO;
         }
 
         if(listaDeTokens.getFirst().valor().equals("for")) {
-            consumirToken(arvore);
+            consumirToken(NO);
             if(!listaDeTokens.getFirst().valor().equals("(")) {
                 throw new RuntimeException("FALTOU O () NO FOR!");
             }
-            consumirToken(arvore);
-            R1(arvore);
+            consumirToken(NO);
+            R1(NO);
             if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals(";")) {
                 throw new RuntimeException("FALTOU ; DEPOIS DA DECLARAÇÃO DO FOR!");
             }
-            consumirToken(arvore);
-            R2(arvore);
+            consumirToken(NO);
+            R2(NO);
             if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals(";")) {
                 throw new RuntimeException("FALTOU ; DEPOIS DA DECLARAÇÃO DO FOR!");
             }
-            consumirToken(arvore);
-            R2(arvore);
+            consumirToken(NO);
+            R2(NO);
             if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals(")")) {
                 throw new RuntimeException("FALTOU ; DEPOIS DA DECLARAÇÃO DO FOR!");
             }
-            consumirToken(arvore);
-            bloco(arvore);
-            return;
+            consumirToken(NO);
+            bloco(NO);
+            return NO;
         }
+
+        return null;
     }
 
-    private void R1(Node arvore) {
+    private void R1(Node repeticao) {
         if(listaDeTokens.getFirst().valor().equals(";")) {
             return;
         }
 
         if(listaDeTokens.getFirst().tipo() == Recursos.TIPO) {
-            declaracao(arvore);
+            repeticao.addChild(declaracao());
             return;
         }
     }
 
-    private void R2(Node arvore) {
+    private void R2(Node repeticao) {
         Token token = listaDeTokens.getFirst();
         if(token.valor().equals(";") || token.valor().equals(")")) return;
         if(a() || token.valor().equals("!") || token.valor().equals("(")) {
-            arvore.addChild(expressao());
+            repeticao.addChild(expressao());
         }
     }
 

@@ -48,7 +48,11 @@ public class Node {
         }
 
         for(Node child : childNodes) {
-            child.print(prefixo + "  ");
+            if(child == null) {
+                System.out.println("NULL");
+            } else {
+                child.print(prefixo + "  ");
+            }
         }
     }
 }
