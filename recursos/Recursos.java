@@ -8,5 +8,6 @@ public enum Recursos {
     PALAVRA_RESERVADA,
     IDENTIFICADOR,
     OPERADOR,
+    BOOLEANO,
     TIPO
 }

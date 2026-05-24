@@ -17,6 +17,7 @@ public class AnalisadorLexico {
     private HashMap<Recursos, Recurso> tiposHashMap;
     private final Recurso palavrasReservadas = new PalavraReservada(this.fileScanner);
     private final Recurso tipo = new Tipo(this.fileScanner);
+    private final Recurso booleano = new Booleano(this.fileScanner);
     private Deque<Token> tokens;
     private boolean erroDetectado = false;
 
@@ -98,10 +99,16 @@ public class AnalisadorLexico {
                     return;
                 }
                 if(!lexema.getToken().isEmpty()) {
-                    if(tipo.getKey() == Recursos.IDENTIFICADOR && palavrasReservadas.matches(lexema.getToken())) {
-                        criaToken(lexema.getToken(), Recursos.PALAVRA_RESERVADA, this.tokens.size(), fileScanner.getLine(), pivo);
-                    } else if (tipo.getKey() == Recursos.IDENTIFICADOR && this.tipo.matches(lexema.getToken())) {
-                        criaToken(lexema.getToken(), Recursos.TIPO, this.tokens.size(), fileScanner.getLine(), pivo);
+                    if(tipo.getKey() == Recursos.IDENTIFICADOR) {
+                        if(this.palavrasReservadas.matches(lexema.getToken())) {
+                            criaToken(lexema.getToken(), Recursos.PALAVRA_RESERVADA, this.tokens.size(), fileScanner.getLine(), pivo);
+                        } else if (this.tipo.matches(lexema.getToken())) {
+                            criaToken(lexema.getToken(), Recursos.TIPO, this.tokens.size(), fileScanner.getLine(), pivo);
+                        } else if (this.booleano.matches(lexema.getToken())) {
+                            criaToken(lexema.getToken(), Recursos.BOOLEANO, this.tokens.size(), fileScanner.getLine(), pivo);
+                        } else {
+                            criaToken(lexema.getToken(), tipo.getKey(), this.tokens.size(), fileScanner.getLine(), pivo);
+                        }
                     } else {
                         criaToken(lexema.getToken(), tipo.getKey(), this.tokens.size(), fileScanner.getLine(), pivo);
                     }
@@ -115,7 +122,7 @@ public class AnalisadorLexico {
         errorHandler(character, "", pivoLinha, pivo);
     }
 
-    public Deque<Token> executarAnaliseLexica(File codigoFonte) {
+    public Deque<Token> executarAnalise(File codigoFonte) {
         this.fileScanner = null;
         this.tokens = new ArrayDeque<Token>();
         try {
