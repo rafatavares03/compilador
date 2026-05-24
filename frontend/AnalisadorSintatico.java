@@ -20,6 +20,13 @@ public class AnalisadorSintatico {
         return true;
     }
 
+    private void consumirToken(Node raiz) {
+        if(listaDeTokens.isEmpty()) {
+            throw new RuntimeException("LISTA VAZIA!");
+        }
+        raiz.addChild(new Node(listaDeTokens.removeFirst()));
+    }
+
     private boolean a() {
         if(listaDeTokens.isEmpty()) return false;
         Recursos tokenTipo = listaDeTokens.getFirst().tipo();
@@ -61,7 +68,7 @@ public class AnalisadorSintatico {
             folha = new Node(Sentencas.DECLARACAO);
             arvore.addChild(folha);
             declaracao(folha);
-            arvore.addChild(new Node(this.listaDeTokens.removeFirst()));
+            consumirToken(arvore);
             S1(arvore);
             return;
         }
@@ -93,16 +100,16 @@ public class AnalisadorSintatico {
 
     public void condicao(Node arvore) {
         if(listaDeTokens.getFirst().valor().equals("if")) {
-            arvore.addChild(new Node(listaDeTokens.removeFirst()));
+            consumirToken(arvore);
             if(!listaDeTokens.getFirst().valor().equals("(")) {
                 throw new RuntimeException("FALTOU O () NO IF");
             }
-            arvore.addChild(new Node(listaDeTokens.removeFirst()));
+            consumirToken(arvore);
             expressao(arvore);
             if(!listaDeTokens.getFirst().valor().equals(")")) {
                 throw new RuntimeException("PARENTESES NÃO FECHADO");
             }
-            arvore.addChild(new Node(listaDeTokens.removeFirst()));
+            consumirToken(arvore);
             bloco(arvore);
             C1(arvore);
         }
@@ -112,7 +119,7 @@ public class AnalisadorSintatico {
         if(listaDeTokens.isEmpty()) return;
         if(listaDeTokens.getFirst().valor().equals("}")) return;
         if(listaDeTokens.getFirst().valor().equals("else")) {
-            arvore.addChild(new Node(listaDeTokens.removeFirst()));
+            consumirToken(arvore);
             C2(arvore);
         }
     }
@@ -133,12 +140,12 @@ public class AnalisadorSintatico {
     private void bloco(Node arvore) {
         Token token = listaDeTokens.getFirst();
         if(token.valor().equals("{")) {
-            arvore.addChild(new Node(listaDeTokens.removeFirst()));
+            consumirToken(arvore);
             sentenca(arvore);
             if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals("}")) {
                 throw new RuntimeException("Bloco não fechado!");
             }
-            arvore.addChild(new Node(listaDeTokens.removeFirst()));
+            consumirToken(arvore);
         }
     }
 
@@ -146,11 +153,11 @@ public class AnalisadorSintatico {
         if(!(listaDeTokens.getFirst().tipo() == Recursos.TIPO)) {
             throw new RuntimeException("DECLARACAO SEM TIPO");
         }
-        arvore.addChild(new Node(listaDeTokens.removeFirst()));
+        consumirToken(arvore);
         if(!(listaDeTokens.getFirst().tipo() == Recursos.IDENTIFICADOR)) {
             throw new RuntimeException("FALTA O NOME DO IDENTIFICADOR");
         }
-        arvore.addChild(new Node(listaDeTokens.removeFirst()));
+        consumirToken(arvore);
         D2(arvore);
         return null;
     }
@@ -176,13 +183,13 @@ public class AnalisadorSintatico {
 
     private void OP(Node arvore) {
         if(operadorDeAtribuicao()) {
-            arvore.addChild(new Node(listaDeTokens.removeFirst()));
+            consumirToken(arvore);
         }
     }
 
     public void COMP(Node arvore) {
         if(operadorDeComparacao()) {
-            arvore.addChild(new Node(listaDeTokens.removeFirst()));
+            consumirToken(arvore);
         }
     }
 
@@ -223,7 +230,7 @@ public class AnalisadorSintatico {
         Token token = listaDeTokens.getFirst();
         if(token.valor().equals(";") || token.valor().equals(")") || operadorDeAtribuicao()) return;
         if(token.valor().equals("||")) {
-            arvore.addChild(new Node(listaDeTokens.removeFirst()));
+            consumirToken(arvore);
             TL(arvore);
             EL1(arvore);
         }
@@ -247,7 +254,7 @@ public class AnalisadorSintatico {
             return;
         }
         if(token.valor().equals("&&")) {
-            arvore.addChild(new Node(listaDeTokens.removeFirst()));
+            consumirToken(arvore);
             expressaoRelacional(arvore);
             TL1(arvore);
         }
@@ -298,7 +305,7 @@ public class AnalisadorSintatico {
             return;
         }
         if(token.valor().equals("+") || token.valor().equals("-")) {
-            arvore.addChild(new Node(listaDeTokens.removeFirst()));
+            consumirToken(arvore);
             T(arvore);
             EA1(arvore);
         }
@@ -325,7 +332,7 @@ public class AnalisadorSintatico {
             return;
         }
         if(token.valor().equals("*") || token.valor().equals("/")) {
-            arvore.addChild(new Node(listaDeTokens.removeFirst()));
+            consumirToken(arvore);
             F(arvore);
             T1(arvore);
         }
@@ -334,23 +341,23 @@ public class AnalisadorSintatico {
     private void F(Node arvore) {
         Token token = listaDeTokens.getFirst();
         if(token.valor().equals("!")) {
-            arvore.addChild(new Node(listaDeTokens.removeFirst()));
+            consumirToken(arvore);
             F(arvore);
             return;
         }
 
         if(token.valor().equals("(")) {
-            arvore.addChild(new Node(listaDeTokens.removeFirst()));
+            consumirToken(arvore);
             expressaoLogica(arvore);
-            arvore.addChild(new Node(listaDeTokens.removeFirst()));
+            consumirToken(arvore);
             return;
         }
 
         if(token.tipo() == Recursos.IDENTIFICADOR || token.tipo() == Recursos.NUMERICO) {
-            arvore.addChild(new Node(listaDeTokens.removeFirst()));
+            consumirToken(arvore);
             P(arvore);
         } else {
-            arvore.addChild(new Node(listaDeTokens.removeFirst()));
+            consumirToken(arvore);
         }
 
     }
@@ -359,12 +366,69 @@ public class AnalisadorSintatico {
         if(listaDeTokens.isEmpty()) return;
         Token token = listaDeTokens.getFirst();
         if(token.equals("++") || token.equals("--")) {
-            arvore.addChild(new Node(listaDeTokens.removeFirst()));
+            consumirToken(arvore);
         }
     }
 
-    public Node repeticao(Node arvore) {
-        return null;
+    public void repeticao(Node arvore) {
+        if(listaDeTokens.getFirst().valor().equals("while")) {
+            consumirToken(arvore);
+            if(!listaDeTokens.getFirst().valor().equals("(")) {
+                throw new RuntimeException("FALTOU O () NO WHILE!");
+            }
+            consumirToken(arvore);
+            expressao(arvore);
+            if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals(")")) {
+                throw new RuntimeException("PARÊNTESES NÃO FECHADO");
+            }
+            consumirToken(arvore);
+            bloco(arvore);
+            return;
+        }
+
+        if(listaDeTokens.getFirst().valor().equals("for")) {
+            consumirToken(arvore);
+            if(!listaDeTokens.getFirst().valor().equals("(")) {
+                throw new RuntimeException("FALTOU O () NO FOR!");
+            }
+            consumirToken(arvore);
+            R1(arvore);
+            if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals(";")) {
+                throw new RuntimeException("FALTOU ; DEPOIS DA DECLARAÇÃO DO FOR!");
+            }
+            consumirToken(arvore);
+            R2(arvore);
+            if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals(";")) {
+                throw new RuntimeException("FALTOU ; DEPOIS DA DECLARAÇÃO DO FOR!");
+            }
+            consumirToken(arvore);
+            R2(arvore);
+            if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals(")")) {
+                throw new RuntimeException("FALTOU ; DEPOIS DA DECLARAÇÃO DO FOR!");
+            }
+            consumirToken(arvore);
+            bloco(arvore);
+            return;
+        }
+    }
+
+    private void R1(Node arvore) {
+        if(listaDeTokens.getFirst().valor().equals(";")) {
+            return;
+        }
+
+        if(listaDeTokens.getFirst().tipo() == Recursos.TIPO) {
+            declaracao(arvore);
+            return;
+        }
+    }
+
+    private void R2(Node arvore) {
+        Token token = listaDeTokens.getFirst();
+        if(token.valor().equals(";") || token.valor().equals(")")) return;
+        if(a() || token.valor().equals("!") || token.valor().equals("(")) {
+            expressao(arvore);
+        }
     }
 
 }
