@@ -43,6 +43,12 @@ public class AnalisadorSintatico {
                 tokenValor.equals("-=");
     }
 
+    private boolean operadorDeAtribuicao(String operador) {
+        return operador.equals("=") ||
+                operador.equals("+=") ||
+                operador.equals("-=");
+    }
+
     private boolean operadorDeComparacao() {
         String tokenValor = listaDeTokens.getFirst().valor();
         return tokenValor.equals("<") ||
@@ -77,6 +83,15 @@ public class AnalisadorSintatico {
             folha = new Node(Sentencas.EXPRESSAO);
             arvore.addChild(folha);
             expressao(folha);
+            if(folha.getChildNodes().get(1).getToken() != null &&
+               folha.getChildNodes().size() >= 2 &&
+               operadorDeAtribuicao(folha.getChildNodes().get(1).getToken().valor())) {
+                folha.setType(Sentencas.ATRIBUICAO);
+            }
+            if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals(";")) {
+                throw new RuntimeException("FALTOU ; APÓS EXPRESSÃO OU ATRIBUIÇÃO");
+            }
+            consumirToken(arvore);
             S1(arvore);
             return;
         }

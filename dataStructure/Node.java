@@ -7,7 +7,7 @@ import java.util.ArrayList;
 
 public class Node {
     private final Token token;
-    private final Sentencas type;
+    private Sentencas type;
     private final ArrayList<Node> childNodes = new ArrayList<>();
 
     public Node(Token token) {
@@ -36,19 +36,17 @@ public class Node {
         return this.type;
     }
 
-    public void print(String prefixo) {
+    public void setType(Sentencas type) {
+        this.type = type;
+    }
 
-        // Nó folha
+    public void print(String prefixo) {
         if(token != null) {
             System.out.println(prefixo + token.valor());
-        }
-
-        // Nó interno
-        else {
+        } else {
             System.out.println(prefixo + type);
         }
 
-        // Filhos
         for(Node child : childNodes) {
             child.print(prefixo + "  ");
         }
