@@ -9,15 +9,15 @@ import java.util.Deque;
 
 public class AnalisadorSintatico {
     private Deque<Token> listaDeTokens;
-    public boolean executarAnalise(Deque<Token>tokens) {
-        Node arvoreSintatica = new Node(Sentencas.PROGRAMA);
+    public Node executarAnalise(Deque<Token>tokens) {
         if(tokens.isEmpty()) {
-            return false;
+            return null;
         }
         this.listaDeTokens = tokens;
+        Node arvoreSintatica = new Node(Sentencas.PROGRAMA);
         sentenca(arvoreSintatica);
         arvoreSintatica.print("");
-        return true;
+        return arvoreSintatica;
     }
 
     private void consumirToken(Node raiz) {
@@ -238,6 +238,14 @@ public class AnalisadorSintatico {
         if(a() || listaDeTokens.getFirst().valor().equals("(") || listaDeTokens.getFirst().valor().equals("!")) {
             Node NO = new Node(Sentencas.ATRIBUICAO);
             Node resultado = expressao();
+            if(resultado != null) {
+                Node filho = resultado.getChildNodes().getFirst();
+                if(!filho.getChildNodes().isEmpty() &&
+                   filho.getChildNodes().getFirst().getToken() != null &&
+                   !operadorDeAtribuicao(filho.getChildNodes().getFirst().getToken().valor())) {
+                   return resultado;
+                }
+            }
             NO.addChild(resultado);
             ATR1(NO);
             return NO;
