@@ -187,6 +187,7 @@ public class AnalisadorSintatico {
             if(listaDeTokens.getFirst().tipo() != Recursos.IDENTIFICADOR) {
                 throw new RuntimeException("IDENTIFICADOR ESPERADO");
             }
+            consumirToken(declaracao);
             Node atribuicao = D2();
             if(atribuicao != null) {
                 declaracao.addChild(atribuicao);
@@ -247,7 +248,7 @@ public class AnalisadorSintatico {
     public void ATR1(Node atribuicao) {
         if(listaDeTokens.isEmpty()) return;
         Token token = listaDeTokens.getFirst();
-        if(token.equals(")") || token.equals(";")) return;
+        if(token.valor().equals(")") || token.valor().equals(";") || token.valor().equals(",")) return;
         Node operador = OP();
         if(operador != null) {
             Node filho = atribuicao.getChildNodes().get(0);
@@ -280,7 +281,7 @@ public class AnalisadorSintatico {
     public Node EL1(Node esquerda) {
         if(listaDeTokens.isEmpty()) return esquerda;
         Token token = listaDeTokens.getFirst();
-        if(token.valor().equals(";") || token.valor().equals(")") || operadorDeAtribuicao()) return esquerda;
+        if(token.valor().equals(",") || token.valor().equals(";") || token.valor().equals(")") || operadorDeAtribuicao()) return esquerda;
         if(token.valor().equals("||")) {
             Node OR = new Node(listaDeTokens.removeFirst());
             OR.addChild(esquerda);
@@ -306,6 +307,7 @@ public class AnalisadorSintatico {
         if(token.valor().equals(")") ||
            token.valor().equals("||") ||
            token.valor().equals(";") ||
+           token.valor().equals(",") ||
            operadorDeAtribuicao()){
             return esquerda;
         }
@@ -334,6 +336,7 @@ public class AnalisadorSintatico {
         if(token.valor().equals("&&") ||
             token.valor().equals("||") ||
             token.valor().equals(";") ||
+            token.valor().equals(",") ||
             operadorDeAtribuicao()
         ) {
             return esquerda;
@@ -364,6 +367,7 @@ public class AnalisadorSintatico {
             token.valor().equals("&&") ||
             token.valor().equals("||") ||
             token.valor().equals(";") ||
+            token.valor().equals(",") ||
             operadorDeAtribuicao() ||
             operadorDeComparacao()
         ) {
@@ -395,6 +399,7 @@ public class AnalisadorSintatico {
                 token.valor().equals("&&") ||
                 token.valor().equals("||") ||
                 token.valor().equals(";") ||
+                token.valor().equals(",") ||
                 operadorDeAtribuicao() ||
                 operadorDeComparacao()
         ) {
@@ -487,6 +492,7 @@ public class AnalisadorSintatico {
             }
             consumirToken(NO);
             R2(NO);
+            R3(NO);
             if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals(")")) {
                 throw new RuntimeException("FALTOU ; DEPOIS DA DECLARAÇÃO DO FOR!");
             }
@@ -515,6 +521,17 @@ public class AnalisadorSintatico {
         if(a() || token.valor().equals("!") || token.valor().equals("(")) {
             repeticao.addChild(expressao());
         }
+    }
+
+    private void R3(Node repeticao) {
+        if(listaDeTokens.isEmpty()) return;
+       Token token = listaDeTokens.getFirst();
+        if(token.valor().equals(";") || token.valor().equals(")")) return;
+       if(token.valor().equals(",")) {
+           consumirToken(repeticao);
+           R2(repeticao);
+           R3(repeticao);
+       }
     }
 
 }
