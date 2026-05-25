@@ -19,6 +19,10 @@ public class AnalisadorSintatico {
         this.listaDeTokens = tokens;
         Node arvoreSintatica = new Node(Sentencas.PROGRAMA);
         sentenca(arvoreSintatica);
+        while(erroSintatico && !listaDeTokens.isEmpty()) {
+            listaDeTokens.removeFirst();
+            sentenca(arvoreSintatica);
+        }
         if(!erroSintatico){
             arvoreSintatica.print("");
         }
@@ -117,8 +121,9 @@ public class AnalisadorSintatico {
                 String token = listaDeTokens.getFirst().valor();
                 if(a() || listaDeTokens.getFirst().tipo() == Recursos.TIPO || token.equals("if") || token.equals("for") || token.equals("while")) {
                     break;
+                } else {
+                    listaDeTokens.removeFirst();
                 }
-                listaDeTokens.removeFirst();
             }
         }
         return;
@@ -536,7 +541,7 @@ public class AnalisadorSintatico {
 
         if(listaDeTokens.getFirst().valor().equals("for")) {
             consumirToken(NO);
-            if(!listaDeTokens.getFirst().valor().equals("(")) {
+            if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals("(")) {
                 throw new SyntaticException("Esperado o caractere \"(\". A repetição é na forma de for(<declaração>;<expressão>;<expressão>). A declaração e expressão podem ser vazias, porém o formato deve se mantido.", NO.getLastDescendant().getToken());
             }
             consumirToken(NO);
