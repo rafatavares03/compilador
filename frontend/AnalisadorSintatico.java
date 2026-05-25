@@ -10,7 +10,8 @@ import java.util.Deque;
 
 public class AnalisadorSintatico {
     private Deque<Token> listaDeTokens;
-    boolean erroSintatico = false;
+    private boolean erroSintatico = false;
+
     public Node executarAnalise(Deque<Token>tokens) {
         if(tokens.isEmpty()) {
             return null;
@@ -63,55 +64,64 @@ public class AnalisadorSintatico {
                 tokenValor.equals("!=");
     }
 
-    public boolean sentenca(Node arvore) {
+    public void sentenca(Node arvore) {
         try{
+            if(listaDeTokens.isEmpty()) return;
             Token token = listaDeTokens.getFirst();
             if(token.valor().equals("if")) {
                 arvore.addChild(condicao());
                 S1(arvore);
-                return true;
+                return;
             }
 
             if(token.tipo() == Recursos.TIPO) {
                 arvore.addChild(declaracao());
-                if(!listaDeTokens.getFirst().valor().equals(";")) {
-                    throw new SyntaticException("Está faltando o caractere \";\" após a declaração.", arvore.getLastDescendant().getToken());
+                if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals(";")) {
+                    throw new SyntaticException("Esperado o caractere \";\" após a declaração.", arvore.getLastDescendant().getToken());
                 }
                 consumirToken(arvore);
                 S1(arvore);
-                return true;
+                return;
             }
 
             if(a() || token.valor().equals("!") || token.valor().equals("(")) {
-                arvore.addChild(atribuicao());
+                Node atr = atribuicao();
+                if(atr != null) {
+                    arvore.addChild(atr);
+                }
                 if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals(";")) {
-                    throw new SyntaticException("Está faltando o caractere \";\" após a expressão ou atribuição.", arvore.getLastDescendant().getToken());
+                    throw new SyntaticException("Esperado o caractere \";\" após a " + ((atr.getType() == Sentencas.ATRIBUICAO) ? "atribuição." : "expressão."), arvore.getLastDescendant().getToken());
                 }
                 consumirToken(arvore);
                 S1(arvore);
-                return true;
+                return;
             }
 
             if(token.valor().equals("while") || token.valor().equals(("for"))) {
                 arvore.addChild(repeticao());
                 S1(arvore);
-                return true;
+                return;
             }
-            return false;
+
+            if(listaDeTokens.getFirst().valor().equals("}")) {
+                throw new SyntaticException("Bloco vazio.", listaDeTokens.getFirst());
+            } else {
+                throw new SyntaticException("Símbolo não esperado.", listaDeTokens.getFirst());
+            }
+
         } catch (SyntaticException e) {
             erroSintatico = true;
             System.out.println("ERRO: " + e.getMessage());
-            if(e.getToken() != null) System.out.println("\t" + e.getToken().valor()+ " " + e.getToken().linha() + ":" + e.getToken().coluna());
+            if(e.getToken() != null) System.out.println("\t" + e.getToken().linha() + ":" + e.getToken().coluna() + " - Proxímo a \"" + e.getToken().valor() + "\".");
             while(!listaDeTokens.isEmpty()) {
-                String separador = listaDeTokens.removeFirst().valor();
-                if(separador.equals(";") || separador.equals("{") || separador.equals("}")) {
-                    sentenca(arvore);
+                String token = listaDeTokens.getFirst().valor();
+                if(a() || listaDeTokens.getFirst().tipo() == Recursos.TIPO || token.equals("if") || token.equals("for") || token.equals("while")) {
+                    break;
                 }
+                listaDeTokens.removeFirst();
             }
-        } catch (Exception e) {
-            System.out.println("ERRO NA ANÁLISE SINTÁTICA - " + e.getMessage());
         }
-        return true;
+        return;
     }
 
     public void S1(Node arvore) {
@@ -129,7 +139,7 @@ public class AnalisadorSintatico {
         Node NO = new Node(Sentencas.CONDICAO);
         consumirToken(NO);
         if(!listaDeTokens.getFirst().valor().equals("(")) {
-            throw new SyntaticException("Falta o caractere \"(\". A condição é na forma de if(<expressão>).", NO.getLastDescendant().getToken());
+            throw new SyntaticException("Esperado o caractere \"(\". A condição é na forma de if(<expressão>).", NO.getLastDescendant().getToken());
         }
         consumirToken(NO);
         Node resultado = expressao();
@@ -170,17 +180,16 @@ public class AnalisadorSintatico {
     }
 
     private void bloco(Node arvore) {
-        Token token = listaDeTokens.getFirst();
-        if(token.valor().equals("{")) {
-            consumirToken(arvore);
-            sentenca(arvore);
-            if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals("}")) {
-                throw new SyntaticException("Bloco não encerrado, esperado \"}\".", arvore.getLastDescendant().getToken());
-            }
-            consumirToken(arvore);
-        } else {
+        if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals("{")) {
             throw new SyntaticException("Bloco não inicializado, esperado \"{\".", arvore.getLastDescendant().getToken());
         }
+
+        consumirToken(arvore);
+        sentenca(arvore);
+        if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals("}")) {
+            throw new SyntaticException("Bloco não encerrado, esperado \"}\".", arvore.getLastDescendant().getToken());
+        }
+        consumirToken(arvore);
     }
 
     public Node declaracao() {
@@ -261,17 +270,15 @@ public class AnalisadorSintatico {
 
     public Node atribuicao() {
         if(a() || listaDeTokens.getFirst().valor().equals("(") || listaDeTokens.getFirst().valor().equals("!")) {
-            Node NO = new Node(Sentencas.ATRIBUICAO);
-            Node resultado = expressao();
-            if(resultado != null) {
-                Node filho = resultado.getChildNodes().getFirst();
-                if(!filho.getChildNodes().isEmpty() &&
-                   filho.getChildNodes().getFirst().getToken() != null &&
-                   !operadorDeAtribuicao(filho.getChildNodes().getFirst().getToken().valor())) {
-                   return resultado;
-                }
+            Node esquerda = expressao();
+            if(esquerda == null) {
+                return null;
             }
-            NO.addChild(resultado);
+            if(listaDeTokens.isEmpty() || !operadorDeAtribuicao(listaDeTokens.getFirst().valor())) {
+                return esquerda;
+            }
+            Node NO = new Node(Sentencas.ATRIBUICAO);
+            NO.addChild(esquerda.getChildNodes().getFirst());
             ATR1(NO);
             return NO;
         }
@@ -284,10 +291,13 @@ public class AnalisadorSintatico {
         if(token.valor().equals(")") || token.valor().equals(";") || token.valor().equals(",")) return;
         Node operador = OP();
         if(operador != null) {
-            Node filho = atribuicao.getChildNodes().getFirst();
-            atribuicao.getChildNodes().set(0, filho.getChildNodes().getFirst());
             atribuicao.addChild(operador);
-            atribuicao.addChild(expressao().getChildNodes().getFirst());
+            Node exp = expressao();
+            if(exp != null && !exp.getChildNodes().isEmpty()) {
+                operador.addChild(exp.getChildNodes().getFirst());
+            } else {
+                throw new SyntaticException("Atribuição vazia, esperado uma expressão.", operador.getToken());
+            }
         }
     }
 
@@ -302,6 +312,9 @@ public class AnalisadorSintatico {
     }
 
     public Node expressaoLogica() {
+        if(listaDeTokens.isEmpty()) {
+            throw new SyntaticException("Fim de arquivo, esperado expressão.", null);
+        }
         Token token = listaDeTokens.getFirst();
         if(a() || token.valor().equals("(") || token.valor().equals("!")) {
             Node esquerda = TL();
@@ -319,6 +332,9 @@ public class AnalisadorSintatico {
             Node OR = new Node(listaDeTokens.removeFirst());
             OR.addChild(esquerda);
             Node direita = TL();
+            if(direita == null) {
+                throw new SyntaticException("Expressão inválida, esperado termo após o operador \"||\"", OR.getLastDescendant().getToken());
+            }
             OR.addChild(direita);
             return EL1(OR);
         }
@@ -348,6 +364,9 @@ public class AnalisadorSintatico {
             Node AND = new Node(listaDeTokens.removeFirst());
             AND.addChild(esquerda);
             Node direita = expressaoRelacional();
+            if(direita == null) {
+                throw new SyntaticException("Expressão inválida, esperado termo após o operador \"&&\"", AND.getLastDescendant().getToken());
+            }
             AND.addChild(direita);
             return TL1(AND);
         }
@@ -378,6 +397,9 @@ public class AnalisadorSintatico {
             Node operador = COMP();
             operador.addChild(esquerda);
             Node direita = expressaoAritmetica();
+            if(direita == null) {
+                throw new SyntaticException("Expressão inválida, esperado termo após o operador \"" + operador.getToken().valor() + "\"", operador.getLastDescendant().getToken());
+            }
             operador.addChild(direita);
             return ER1(operador);
         }
@@ -410,6 +432,10 @@ public class AnalisadorSintatico {
             Node operador = new Node(listaDeTokens.removeFirst());
             operador.addChild(esquerda);
             Node direita = T();
+            if(direita == null) {
+                String op = (operador.getToken() == null) ? "." : " \"" + operador.getToken().valor() + "\"";
+                throw new SyntaticException("Expressão inválida, esperado termo após o operador" + op, operador.getLastDescendant().getToken());
+            }
             operador.addChild(direita);
             return EA1(operador);
         }
@@ -493,7 +519,7 @@ public class AnalisadorSintatico {
         if(listaDeTokens.getFirst().valor().equals("while")) {
             consumirToken(NO);
             if(!listaDeTokens.getFirst().valor().equals("(")) {
-                throw new SyntaticException("Falta o caractere \"(\". A repetição é na forma de while(<expressão>).", NO.getLastDescendant().getToken());
+                throw new SyntaticException("Esperado o caractere \"(\". A repetição é na forma de while(<expressão>).", NO.getLastDescendant().getToken());
             }
             consumirToken(NO);
             Node resultado = expressao();
@@ -511,7 +537,7 @@ public class AnalisadorSintatico {
         if(listaDeTokens.getFirst().valor().equals("for")) {
             consumirToken(NO);
             if(!listaDeTokens.getFirst().valor().equals("(")) {
-                throw new SyntaticException("Falta o caractere \"(\". A repetição é na forma de for(<declaração>;<expressão>;<expressão>). A declaração e expressão podem ser vazias, porém o formato deve se mantido.", NO.getLastDescendant().getToken());
+                throw new SyntaticException("Esperado o caractere \"(\". A repetição é na forma de for(<declaração>;<expressão>;<expressão>). A declaração e expressão podem ser vazias, porém o formato deve se mantido.", NO.getLastDescendant().getToken());
             }
             consumirToken(NO);
             R1(NO);
