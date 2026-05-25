@@ -1,5 +1,6 @@
 package frontend;
 
+import exception.SyntaticException;
 import recursos.Recursos;
 import recursos.Sentencas;
 import token.Token;
@@ -9,6 +10,7 @@ import java.util.Deque;
 
 public class AnalisadorSintatico {
     private Deque<Token> listaDeTokens;
+    boolean erroSintatico = false;
     public Node executarAnalise(Deque<Token>tokens) {
         if(tokens.isEmpty()) {
             return null;
@@ -16,13 +18,15 @@ public class AnalisadorSintatico {
         this.listaDeTokens = tokens;
         Node arvoreSintatica = new Node(Sentencas.PROGRAMA);
         sentenca(arvoreSintatica);
-        arvoreSintatica.print("");
+        if(!erroSintatico){
+            arvoreSintatica.print("");
+        }
         return arvoreSintatica;
     }
 
     private void consumirToken(Node raiz) {
         if(listaDeTokens.isEmpty()) {
-            throw new RuntimeException("LISTA VAZIA!");
+            throw new SyntaticException("Lista de tokens está vazia, não possível adicionar novos tokens à árvore sintática.", raiz.getToken());
         }
         raiz.addChild(new Node(listaDeTokens.removeFirst()));
     }
@@ -59,39 +63,55 @@ public class AnalisadorSintatico {
                 tokenValor.equals("!=");
     }
 
-    public void sentenca(Node arvore) {
-        Token token = listaDeTokens.getFirst();
-        if(token.valor().equals("if")) {
-            arvore.addChild(condicao());
-            S1(arvore);
-            return;
-        }
-
-        if(token.tipo() == Recursos.TIPO) {
-            arvore.addChild(declaracao());
-            if(!listaDeTokens.getFirst().valor().equals(";")) {
-                throw new RuntimeException("FALTOU ; DEPOIS DA DECLARACAO");
+    public boolean sentenca(Node arvore) {
+        try{
+            Token token = listaDeTokens.getFirst();
+            if(token.valor().equals("if")) {
+                arvore.addChild(condicao());
+                S1(arvore);
+                return true;
             }
-            consumirToken(arvore);
-            S1(arvore);
-            return;
-        }
 
-        if(a() || token.valor().equals("!") || token.valor().equals("(")) {
-            arvore.addChild(atribuicao());
-            if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals(";")) {
-                throw new RuntimeException("FALTOU ; APÓS EXPRESSÃO OU ATRIBUIÇÃO");
+            if(token.tipo() == Recursos.TIPO) {
+                arvore.addChild(declaracao());
+                if(!listaDeTokens.getFirst().valor().equals(";")) {
+                    throw new SyntaticException("Está faltando o caractere \";\" após a declaração.", arvore.getLastDescendant().getToken());
+                }
+                consumirToken(arvore);
+                S1(arvore);
+                return true;
             }
-            consumirToken(arvore);
-            S1(arvore);
-            return;
-        }
 
-        if(token.valor().equals("while") || token.valor().equals(("for"))) {
-            arvore.addChild(repeticao());
-            S1(arvore);
-            return;
+            if(a() || token.valor().equals("!") || token.valor().equals("(")) {
+                arvore.addChild(atribuicao());
+                if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals(";")) {
+                    throw new SyntaticException("Está faltando o caractere \";\" após a expressão ou atribuição.", arvore.getLastDescendant().getToken());
+                }
+                consumirToken(arvore);
+                S1(arvore);
+                return true;
+            }
+
+            if(token.valor().equals("while") || token.valor().equals(("for"))) {
+                arvore.addChild(repeticao());
+                S1(arvore);
+                return true;
+            }
+            return false;
+        } catch (SyntaticException e) {
+            erroSintatico = true;
+            System.out.println("ERRO: " + e.getMessage());
+            if(e.getToken() != null) System.out.println("\t" + e.getToken().valor()+ " " + e.getToken().linha() + ":" + e.getToken().coluna());
+            while(!listaDeTokens.isEmpty()) {
+                String separador = listaDeTokens.removeFirst().valor();
+                if(separador.equals(";") || separador.equals("{") || separador.equals("}")) {
+                    sentenca(arvore);
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("ERRO NA ANÁLISE SINTÁTICA - " + e.getMessage());
         }
+        return true;
     }
 
     public void S1(Node arvore) {
@@ -104,12 +124,12 @@ public class AnalisadorSintatico {
 
     public Node condicao() {
         if(!listaDeTokens.getFirst().valor().equals("if")) {
-            throw new RuntimeException("Condição iniciada incorretamente");
+            throw new SyntaticException("Condição iniciada incorretamente.", listaDeTokens.getFirst());
         }
         Node NO = new Node(Sentencas.CONDICAO);
         consumirToken(NO);
         if(!listaDeTokens.getFirst().valor().equals("(")) {
-            throw new RuntimeException("FALTOU O () NO IF");
+            throw new SyntaticException("Falta o caractere \"(\". A condição é na forma de if(<expressão>).", NO.getLastDescendant().getToken());
         }
         consumirToken(NO);
         Node resultado = expressao();
@@ -117,7 +137,7 @@ public class AnalisadorSintatico {
             NO.addChild(resultado);
         }
         if(!listaDeTokens.getFirst().valor().equals(")")) {
-            throw new RuntimeException("PARENTESES NÃO FECHADO");
+            throw new SyntaticException("O parênteses da expressão condicional não foi encerrado.", NO.getChildNodes().getFirst().getToken());
         }
         consumirToken(NO);
         bloco(NO);
@@ -155,20 +175,22 @@ public class AnalisadorSintatico {
             consumirToken(arvore);
             sentenca(arvore);
             if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals("}")) {
-                throw new RuntimeException("Bloco não fechado!");
+                throw new SyntaticException("Bloco não encerrado, esperado \"}\".", arvore.getLastDescendant().getToken());
             }
             consumirToken(arvore);
+        } else {
+            throw new SyntaticException("Bloco não inicializado, esperado \"{\".", arvore.getLastDescendant().getToken());
         }
     }
 
     public Node declaracao() {
         Node NO = new Node(Sentencas.DECLARACAO);
         if(!(listaDeTokens.getFirst().tipo() == Recursos.TIPO)) {
-            throw new RuntimeException("DECLARACAO SEM TIPO");
+            throw new SyntaticException("Não é possível declarar uma variável sem tipo especificado.", listaDeTokens.getFirst());
         }
         consumirToken(NO);
         if(!(listaDeTokens.getFirst().tipo() == Recursos.IDENTIFICADOR)) {
-            throw new RuntimeException("FALTA O NOME DO IDENTIFICADOR");
+            throw new SyntaticException("Identificador não especificado na declaração.", listaDeTokens.getFirst());
         }
         consumirToken(NO);
         Node atribuicao = D2();
@@ -185,7 +207,7 @@ public class AnalisadorSintatico {
         if(listaDeTokens.getFirst().valor().equals(",")) {
             consumirToken(declaracao);
             if(listaDeTokens.getFirst().tipo() != Recursos.IDENTIFICADOR) {
-                throw new RuntimeException("IDENTIFICADOR ESPERADO");
+                throw new SyntaticException("Token inválido, esperado um identificador.", listaDeTokens.getFirst());
             }
             consumirToken(declaracao);
             Node atribuicao = D2();
@@ -205,8 +227,11 @@ public class AnalisadorSintatico {
         if(operadorDeAtribuicao()) {
             Node operador = OP();
             Node conteudo = D3();
-            if(operador == null|| conteudo == null) {
-                throw new RuntimeException("ERRO NA DECLARAÇÃO!");
+            if(operador == null) {
+                throw new SyntaticException("Erro ao processar operador de atribuição", listaDeTokens.getFirst());
+            }
+            if(conteudo == null) {
+                throw new SyntaticException("Token inválido, esperado um valor de variável ou expressão", listaDeTokens.getFirst());
             }
             operador.addChild(conteudo);
             return operador;
@@ -259,10 +284,10 @@ public class AnalisadorSintatico {
         if(token.valor().equals(")") || token.valor().equals(";") || token.valor().equals(",")) return;
         Node operador = OP();
         if(operador != null) {
-            Node filho = atribuicao.getChildNodes().get(0);
-            atribuicao.getChildNodes().set(0, filho.getChildNodes().get(0));
+            Node filho = atribuicao.getChildNodes().getFirst();
+            atribuicao.getChildNodes().set(0, filho.getChildNodes().getFirst());
             atribuicao.addChild(operador);
-            atribuicao.addChild(expressao().getChildNodes().get(0));
+            atribuicao.addChild(expressao().getChildNodes().getFirst());
         }
     }
 
@@ -468,7 +493,7 @@ public class AnalisadorSintatico {
         if(listaDeTokens.getFirst().valor().equals("while")) {
             consumirToken(NO);
             if(!listaDeTokens.getFirst().valor().equals("(")) {
-                throw new RuntimeException("FALTOU O () NO WHILE!");
+                throw new SyntaticException("Falta o caractere \"(\". A repetição é na forma de while(<expressão>).", NO.getLastDescendant().getToken());
             }
             consumirToken(NO);
             Node resultado = expressao();
@@ -476,7 +501,7 @@ public class AnalisadorSintatico {
                 NO.addChild(resultado);
             }
             if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals(")")) {
-                throw new RuntimeException("PARÊNTESES NÃO FECHADO");
+                throw new SyntaticException("O parênteses do while não foi encerrado.", NO.getChildNodes().getFirst().getToken());
             }
             consumirToken(NO);
             bloco(NO);
@@ -486,23 +511,23 @@ public class AnalisadorSintatico {
         if(listaDeTokens.getFirst().valor().equals("for")) {
             consumirToken(NO);
             if(!listaDeTokens.getFirst().valor().equals("(")) {
-                throw new RuntimeException("FALTOU O () NO FOR!");
+                throw new SyntaticException("Falta o caractere \"(\". A repetição é na forma de for(<declaração>;<expressão>;<expressão>). A declaração e expressão podem ser vazias, porém o formato deve se mantido.", NO.getLastDescendant().getToken());
             }
             consumirToken(NO);
             R1(NO);
             if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals(";")) {
-                throw new RuntimeException("FALTOU ; DEPOIS DA DECLARAÇÃO DO FOR!");
+                throw new SyntaticException("Esperado \";\"", listaDeTokens.getFirst());
             }
             consumirToken(NO);
             R2(NO);
             if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals(";")) {
-                throw new RuntimeException("FALTOU ; DEPOIS DA DECLARAÇÃO DO FOR!");
+                throw new SyntaticException("Esperado \";\"", listaDeTokens.getFirst());
             }
             consumirToken(NO);
             R2(NO);
             R3(NO);
             if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals(")")) {
-                throw new RuntimeException("FALTOU ; DEPOIS DA DECLARAÇÃO DO FOR!");
+                throw new SyntaticException("O parênteses do for não foi encerrado.", NO.getChildNodes().getFirst().getToken());
             }
             consumirToken(NO);
             bloco(NO);

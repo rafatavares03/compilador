@@ -55,4 +55,15 @@ public class Node {
             }
         }
     }
+
+    public Node getLastDescendant() {
+
+        if(childNodes.isEmpty()) {
+            return this;
+        }
+
+        return childNodes
+                .get(childNodes.size() - 1)
+                .getLastDescendant();
+    }
 }
