@@ -46,7 +46,7 @@ public class AnalisadorSintatico {
             System.out.println("Escopo " + i);
             for(TokenID simbolo : escopos.get(i).values()) {
                 System.out.println(
-                        "  " + simbolo.getToken().valor() + " " + simbolo.getTipo() + " " + simbolo.getValor() + " " + simbolo.getToken().linha() + " " + simbolo.getToken().coluna()
+                        "  " + simbolo.getToken().valor() + " " + simbolo.getTipo() + " " + simbolo.getValor() + " " + simbolo.getToken().linha() + " " + simbolo.getToken().coluna() + " " + simbolo.getUsada()
                 );
             }
         }
@@ -56,6 +56,7 @@ public class AnalisadorSintatico {
         for(int i = escopos.size() - 1; i >= 0; i--) {
             HashMap<String, TokenID> escopo = escopos.get(i);
             if(escopo.containsKey(nome)) {
+                escopo.get(nome).setUsada(true);
                 return escopo.get(nome);
             }
         }
