@@ -1,15 +1,24 @@
 package frontend;
 
+import dataStructure.NodeSemantico;
+import exception.InvalidOperationException;
 import exception.SyntaticException;
 import recursos.Recursos;
 import recursos.Sentencas;
+import recursos.Tipo;
+import recursos.Tipos;
 import token.Token;
 import dataStructure.Node;
+import token.TokenID;
 
 import java.util.Deque;
+import java.util.HashMap;
+import java.util.Stack;
+import java.util.regex.Pattern;
 
 public class AnalisadorSintatico {
     private Deque<Token> listaDeTokens;
+    private Stack<HashMap<String, TokenID>> escopos;
     private boolean erroSintatico = false;
 
     public Node executarAnalise(Deque<Token>tokens) {
@@ -17,6 +26,8 @@ public class AnalisadorSintatico {
             return null;
         }
         this.listaDeTokens = tokens;
+        escopos = new Stack<>();
+        escopos.push(new HashMap<>());
         Node arvoreSintatica = new Node(Sentencas.PROGRAMA);
         sentenca(arvoreSintatica);
         while(erroSintatico && !listaDeTokens.isEmpty()) {
@@ -24,9 +35,31 @@ public class AnalisadorSintatico {
             sentenca(arvoreSintatica);
         }
         if(!erroSintatico){
-            arvoreSintatica.print("");
+            //arvoreSintatica.print("");
+            printTabelaDeSimbolos();
         }
         return arvoreSintatica;
+    }
+
+    private void printTabelaDeSimbolos() {
+        for(int i = 0; i < escopos.size(); i++) {
+            System.out.println("Escopo " + i);
+            for(TokenID simbolo : escopos.get(i).values()) {
+                System.out.println(
+                        "  " + simbolo.getToken().valor() + " " + simbolo.getTipo() + " " + simbolo.getValor() + " " + simbolo.getToken().linha() + " " + simbolo.getToken().coluna()
+                );
+            }
+        }
+    }
+
+    private TokenID buscarIdentificador(String nome) {
+        for(int i = escopos.size() - 1; i >= 0; i--) {
+            HashMap<String, TokenID> escopo = escopos.get(i);
+            if(escopo.containsKey(nome)) {
+                return escopo.get(nome);
+            }
+        }
+        return null;
     }
 
     private void consumirToken(Node raiz) {
@@ -34,6 +67,96 @@ public class AnalisadorSintatico {
             throw new SyntaticException("Lista de tokens está vazia, não possível adicionar novos tokens à árvore sintática.", raiz.getToken());
         }
         raiz.addChild(new Node(listaDeTokens.removeFirst()));
+    }
+
+    private Tipos getTipo(Token token) {
+        if(Pattern.compile("[0-9]+(\\.[0-9]+)").matcher(token.valor()).matches()) {
+            return Tipos.FLOAT;
+        }
+
+        if(Pattern.compile("[0-9]+").matcher(token.valor()).matches()) {
+            return Tipos.INT;
+        }
+
+        if(token.valor().contains("\"") || token.valor().contains("\'")) {
+            return Tipos.STRING;
+        }
+
+        if(Pattern.compile("true|false").matcher(token.valor()).matches()) {
+            return Tipos.BOOLEAN;
+        }
+
+        return Tipos.NULL;
+    }
+
+    private Tipos verificaSoma(NodeSemantico t1, NodeSemantico t2) {
+        if(t1.getTipo() == Tipos.INT && t2.getTipo() == Tipos.INT) {
+            return Tipos.INT;
+        }
+
+        if(t1.getTipo() == Tipos.INT && t2.getTipo() == Tipos.FLOAT ||
+            t1.getTipo() == Tipos.FLOAT && t2.getTipo() == Tipos.INT ||
+                t1.getTipo() == Tipos.FLOAT && t2.getTipo() == Tipos.FLOAT
+        ) {
+            return Tipos.FLOAT;
+        }
+
+        if(t1.getTipo() == Tipos.STRING && t2.getTipo() == Tipos.STRING ||
+            t1.getTipo() == Tipos.STRING && t2.getTipo() == Tipos.INT ||
+                t1.getTipo() == Tipos.INT && t2.getTipo() == Tipos.STRING ||
+                t1.getTipo() == Tipos.FLOAT && t2.getTipo() == Tipos.STRING ||
+                t1.getTipo() == Tipos.STRING && t2.getTipo() == Tipos.FLOAT
+        ) {
+            return Tipos.STRING;
+        }
+
+        return Tipos.ERRO;
+    }
+
+    private Tipos verificaOperacaoAritmetica(NodeSemantico t1, NodeSemantico t2) {
+        if(t1.getTipo() == Tipos.INT && t2.getTipo() == Tipos.INT) {
+            return Tipos.INT;
+        }
+
+        if(t1.getTipo() == Tipos.INT && t2.getTipo() == Tipos.FLOAT ||
+                t1.getTipo() == Tipos.FLOAT && t2.getTipo() == Tipos.INT ||
+                t1.getTipo() == Tipos.FLOAT && t2.getTipo() == Tipos.FLOAT
+        ) {
+            return Tipos.FLOAT;
+        }
+
+        return Tipos.ERRO;
+    }
+
+    private Tipos verificaOperacaoLogica(NodeSemantico t1, NodeSemantico t2) {
+        if(t1.getTipo() == Tipos.BOOLEAN && t2.getTipo() == Tipos.BOOLEAN) {
+            return Tipos.BOOLEAN;
+        }
+
+        return Tipos.ERRO;
+    }
+
+    private Tipos verificaOperacaoRelacional(NodeSemantico t1, NodeSemantico t2) {
+        if(t1.getTipo() == Tipos.INT || t1.getTipo() == Tipos.FLOAT &&
+                t2.getTipo() == Tipos.INT || t2.getTipo() == Tipos.FLOAT) {
+            return Tipos.BOOLEAN;
+        }
+
+        return Tipos.ERRO;
+    }
+
+    private Tipos verificaAtribuicao(Tipos tipo, Tipos conteudo) {
+        if(tipo == Tipos.FLOAT) {
+            if(conteudo == Tipos.FLOAT || conteudo == Tipos.INT) {
+                return Tipos.FLOAT;
+            }
+        }
+
+        if(tipo == conteudo) {
+            return tipo;
+        }
+
+        return Tipos.ERRO;
     }
 
     private boolean a() {
@@ -89,12 +212,12 @@ public class AnalisadorSintatico {
             }
 
             if(a() || token.valor().equals("!") || token.valor().equals("(")) {
-                Node atr = atribuicao();
-                if(atr != null) {
-                    arvore.addChild(atr);
+                NodeSemantico atr = atribuicao();
+                if(atr != null && atr.getNode() != null) {
+                    arvore.addChild(atr.getNode());
                 }
                 if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals(";")) {
-                    throw new SyntaticException("Esperado o caractere \";\" após a " + ((atr.getType() == Sentencas.ATRIBUICAO) ? "atribuição." : "expressão."), arvore.getLastDescendant().getToken());
+                    throw new SyntaticException("Esperado o caractere \";\" após a " + ((atr.getNode().getType() == Sentencas.ATRIBUICAO) ? "atribuição." : "expressão."), arvore.getLastDescendant().getToken());
                 }
                 consumirToken(arvore);
                 S1(arvore);
@@ -117,16 +240,32 @@ public class AnalisadorSintatico {
             erroSintatico = true;
             System.out.println("ERRO: " + e.getMessage());
             if(e.getToken() != null) System.out.println("\t" + e.getToken().linha() + ":" + e.getToken().coluna() + " - Proxímo a \"" + e.getToken().valor() + "\".");
-            while(!listaDeTokens.isEmpty()) {
-                String token = listaDeTokens.getFirst().valor();
-                if(a() || listaDeTokens.getFirst().tipo() == Recursos.TIPO || token.equals("if") || token.equals("for") || token.equals("while")) {
-                    break;
-                } else {
-                    listaDeTokens.removeFirst();
-                }
+            sincronizar(e.getToken());
+        } catch (InvalidOperationException e) {
+            erroSintatico = true;
+            NodeSemantico t1 = e.getT1();
+            NodeSemantico t2 = e.getT2();
+            if(e.getMessage().contains("Atribuição")) {
+                System.out.println("ERRO: " + e.getMessage() + " Não é possível atribuir " + t2.getTipo() + " a uma variável do tipo " + t1.getTipo() + ".");
+            } else {
+                System.out.println("ERRO: " + e.getMessage() + t1.getNode().getToken().valor() + " é do tipo " + t1.getTipo() + ", enquanto " + t2.getNode().getToken().valor() + " é do tipo" + t2.getTipo() + ".");
             }
+            if(t2.getNode() != null && t2.getNode().getToken() != null) System.out.println("\t" + t2.getNode().getToken().linha() + ":" + t2.getNode().getToken().coluna() + " - Proxímo a \"" + t2.getNode().getToken().valor() + "\".");
+            sincronizar(t2.getNode().getToken());
         }
-        return;
+    }
+
+    private void sincronizar(Token exceptionToken) {
+        while(!listaDeTokens.isEmpty()) {
+            String token = listaDeTokens.getFirst().valor();
+            if(exceptionToken.tipo() == Recursos.IDENTIFICADOR && listaDeTokens.getFirst() == exceptionToken) {
+                listaDeTokens.removeFirst();
+            }
+            if(a() || listaDeTokens.getFirst().tipo() == Recursos.TIPO || token.equals("if") || token.equals("for") || token.equals("while")) {
+                break;
+            }
+            listaDeTokens.removeFirst();
+        }
     }
 
     public void S1(Node arvore) {
@@ -147,15 +286,18 @@ public class AnalisadorSintatico {
             throw new SyntaticException("Esperado o caractere \"(\". A condição é na forma de if(<expressão>).", NO.getLastDescendant().getToken());
         }
         consumirToken(NO);
-        Node resultado = expressao();
-        if(resultado != null) {
-            NO.addChild(resultado);
+        NodeSemantico resultado = expressao();
+        if(resultado != null && resultado.getNode() != null) {
+            NO.addChild(resultado.getNode());
         }
         if(!listaDeTokens.getFirst().valor().equals(")")) {
             throw new SyntaticException("O parênteses da expressão condicional não foi encerrado.", NO.getChildNodes().getFirst().getToken());
         }
         consumirToken(NO);
         bloco(NO);
+        if(resultado.getTipo() != Tipos.BOOLEAN) {
+            throw new SyntaticException("A expressão da condição não é do tipo BOOLEAN", NO.getChildNodes().getFirst().getToken());
+        }
         C1(NO);
         return NO;
     }
@@ -185,37 +327,57 @@ public class AnalisadorSintatico {
     }
 
     private void bloco(Node arvore) {
-        if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals("{")) {
-            throw new SyntaticException("Bloco não inicializado, esperado \"{\".", arvore.getLastDescendant().getToken());
-        }
+        escopos.push(new HashMap<>());
+        try {
+            if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals("{")) {
+                throw new SyntaticException("Bloco não inicializado, esperado \"{\".", arvore.getLastDescendant().getToken());
+            }
 
-        consumirToken(arvore);
-        sentenca(arvore);
-        if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals("}")) {
-            throw new SyntaticException("Bloco não encerrado, esperado \"}\".", arvore.getLastDescendant().getToken());
+            consumirToken(arvore);
+            sentenca(arvore);
+            if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals("}")) {
+                throw new SyntaticException("Bloco não encerrado, esperado \"}\".", arvore.getLastDescendant().getToken());
+            }
+            consumirToken(arvore);
+        } catch (SyntaticException e) {
+            erroSintatico = true;
+            System.out.println("ERRO: " + e.getMessage());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        } finally {
+            escopos.pop();
         }
-        consumirToken(arvore);
     }
 
     public Node declaracao() {
         Node NO = new Node(Sentencas.DECLARACAO);
-        if(!(listaDeTokens.getFirst().tipo() == Recursos.TIPO)) {
+        Token type = listaDeTokens.getFirst();
+        if(!(type.tipo() == Recursos.TIPO)) {
             throw new SyntaticException("Não é possível declarar uma variável sem tipo especificado.", listaDeTokens.getFirst());
         }
         consumirToken(NO);
-        if(!(listaDeTokens.getFirst().tipo() == Recursos.IDENTIFICADOR)) {
+        Token identificador = listaDeTokens.getFirst();
+        if(!(identificador.tipo() == Recursos.IDENTIFICADOR)) {
             throw new SyntaticException("Identificador não especificado na declaração.", listaDeTokens.getFirst());
         }
+        HashMap<String, TokenID> escopoAtual = escopos.peek();
+        TokenID id = escopoAtual.get(identificador.valor());
+        if(id != null) {
+            throw new SyntaticException("Identificador \"" + identificador.valor() + "\" já foi declarado na linha " + id.getToken().linha() + ".", identificador);
+        }
         consumirToken(NO);
-        Node atribuicao = D2();
+        NodeSemantico atr = D2(Tipos.fromString(type.valor()));
+        Node atribuicao = (atr != null) ? atr.getNode() : null;
+        String conteudo = (atr != null) ? atr.getValor() : null;
         if(atribuicao != null) {
             NO.addChild(atribuicao);
         }
-        D1(NO);
+        escopoAtual.put(identificador.valor(), new TokenID(identificador, Tipos.fromString(type.valor()), conteudo));
+        D1(NO, Tipos.fromString(type.valor()));
         return NO;
     }
 
-    private void D1(Node declaracao) {
+    private void D1(Node declaracao, Tipos tipo) {
         if(listaDeTokens.isEmpty()) return;
         if(listaDeTokens.getFirst().valor().equals(";")) return;
         if(listaDeTokens.getFirst().valor().equals(",")) {
@@ -223,16 +385,21 @@ public class AnalisadorSintatico {
             if(listaDeTokens.getFirst().tipo() != Recursos.IDENTIFICADOR) {
                 throw new SyntaticException("Token inválido, esperado um identificador.", listaDeTokens.getFirst());
             }
+            Token identificador = listaDeTokens.getFirst();
+            HashMap<String, TokenID> escopoAtual = escopos.peek();
             consumirToken(declaracao);
-            Node atribuicao = D2();
+            NodeSemantico atr = D2(tipo);
+            Node atribuicao = (atr != null) ? atr.getNode() : null;
+            String conteudo = (atr != null) ? atr.getValor() : null;
             if(atribuicao != null) {
                 declaracao.addChild(atribuicao);
             }
-            D1(declaracao);
+            escopoAtual.put(identificador.valor(), new TokenID(identificador, tipo, conteudo));
+            D1(declaracao, tipo);
         }
     }
 
-    private Node D2() {
+    private NodeSemantico D2(Tipos tipo) {
         if(listaDeTokens.isEmpty()) return null;
         Token token = listaDeTokens.getFirst();
         if(token.valor().equals(",") || token.valor().equals(";")){
@@ -240,20 +407,35 @@ public class AnalisadorSintatico {
         }
         if(operadorDeAtribuicao()) {
             Node operador = OP();
-            Node conteudo = D3();
+            NodeSemantico conteudo = D3();
             if(operador == null) {
                 throw new SyntaticException("Erro ao processar operador de atribuição", listaDeTokens.getFirst());
             }
-            if(conteudo == null) {
+            if(conteudo == null || conteudo.getNode() == null) {
                 throw new SyntaticException("Token inválido, esperado um valor de variável ou expressão", listaDeTokens.getFirst());
             }
-            operador.addChild(conteudo);
-            return operador;
+            Tipos opTipo;
+            if(operador.getToken().valor().length() > 1) {
+                String operacao = operador.getToken().valor().substring(1,1);
+                if(operacao.equals("+")) {
+                    opTipo = verificaSoma(new NodeSemantico(null, tipo), conteudo);
+                } else {
+                    opTipo = verificaOperacaoAritmetica(new NodeSemantico(null, tipo), conteudo);
+                }
+            } else {
+                opTipo = conteudo.getTipo();
+            }
+            Tipos resultado = verificaAtribuicao(tipo, opTipo);
+            if(resultado == Tipos.ERRO) {
+                throw new InvalidOperationException("Atribuição inválida.", operador.getToken().valor(), new NodeSemantico(null, tipo), conteudo);
+            }
+            operador.addChild(conteudo.getNode());
+            return new NodeSemantico(operador, tipo, conteudo.getValor());
         }
         return null;
     }
 
-    private Node D3() {
+    private NodeSemantico D3() {
         Token token = listaDeTokens.getFirst();
         if(a() || token.valor().equals("!") || token.valor().equals("(")) {
             return expressaoLogica();
@@ -273,19 +455,26 @@ public class AnalisadorSintatico {
         return new Node(listaDeTokens.removeFirst());
     }
 
-    public Node atribuicao() {
+    public NodeSemantico atribuicao() {
         if(a() || listaDeTokens.getFirst().valor().equals("(") || listaDeTokens.getFirst().valor().equals("!")) {
-            Node esquerda = expressao();
+            NodeSemantico esquerda = expressao();
             if(esquerda == null) {
                 return null;
             }
             if(listaDeTokens.isEmpty() || !operadorDeAtribuicao(listaDeTokens.getFirst().valor())) {
                 return esquerda;
             }
+
             Node NO = new Node(Sentencas.ATRIBUICAO);
-            NO.addChild(esquerda.getChildNodes().getFirst());
+            Node primeiroFilho = esquerda.getNode().getChildNodes().getFirst();
+            NO.addChild(primeiroFilho);
+            Token identificador = primeiroFilho.getToken();
+            TokenID id = buscarIdentificador(identificador.valor());
+            if(id == null) {
+                throw new SyntaticException("Identificador não declarado: " + identificador.valor(), identificador);
+            }
             ATR1(NO);
-            return NO;
+            return new NodeSemantico(NO, id.getTipo());
         }
         return null;
     }
@@ -297,65 +486,75 @@ public class AnalisadorSintatico {
         Node operador = OP();
         if(operador != null) {
             atribuicao.addChild(operador);
-            Node exp = expressao();
-            if(exp != null && !exp.getChildNodes().isEmpty()) {
-                operador.addChild(exp.getChildNodes().getFirst());
+            NodeSemantico exp = expressao();
+            if(exp != null && exp.getNode() != null && !exp.getNode().getChildNodes().isEmpty()) {
+                operador.addChild(exp.getNode().getChildNodes().getFirst());
+                Token identificador = atribuicao.getChildNodes().getFirst().getToken();
+                TokenID id = buscarIdentificador(identificador.valor());
+                if(id != null) {
+                    id.setValor(exp.getValor());
+                }
             } else {
                 throw new SyntaticException("Atribuição vazia, esperado uma expressão.", operador.getToken());
             }
         }
     }
 
-    public Node expressao() {
+    public NodeSemantico expressao() {
         if(a() || listaDeTokens.getFirst().valor().equals("(") || listaDeTokens.getFirst().valor().equals("!")) {
             Node NO = new Node(Sentencas.EXPRESSAO);
-            Node resultado = expressaoLogica();
-            NO.addChild(resultado);
-            return NO;
+            NodeSemantico resultado = expressaoLogica();
+            NO.addChild(resultado.getNode());
+            return new NodeSemantico(NO, resultado.getTipo(), resultado.getValor());
         }
         return null;
     }
 
-    public Node expressaoLogica() {
+    public NodeSemantico expressaoLogica() {
         if(listaDeTokens.isEmpty()) {
             throw new SyntaticException("Fim de arquivo, esperado expressão.", null);
         }
         Token token = listaDeTokens.getFirst();
         if(a() || token.valor().equals("(") || token.valor().equals("!")) {
-            Node esquerda = TL();
+            NodeSemantico esquerda = TL();
             return EL1(esquerda);
         }
         return null;
     }
 
 
-    public Node EL1(Node esquerda) {
+    public NodeSemantico EL1(NodeSemantico esquerda) {
         if(listaDeTokens.isEmpty()) return esquerda;
         Token token = listaDeTokens.getFirst();
         if(token.valor().equals(",") || token.valor().equals(";") || token.valor().equals(")") || operadorDeAtribuicao()) return esquerda;
         if(token.valor().equals("||")) {
             Node OR = new Node(listaDeTokens.removeFirst());
-            OR.addChild(esquerda);
-            Node direita = TL();
+            OR.addChild(esquerda.getNode());
+            NodeSemantico direita = TL();
             if(direita == null) {
                 throw new SyntaticException("Expressão inválida, esperado termo após o operador \"||\"", OR.getLastDescendant().getToken());
             }
-            OR.addChild(direita);
-            return EL1(OR);
+            OR.addChild(direita.getNode());
+            Tipos opTipo = verificaOperacaoLogica(esquerda, direita);
+            if(opTipo == Tipos.ERRO) {
+                throw new InvalidOperationException("Operação inválida.", OR.getToken().valor(), esquerda, direita);
+            }
+            String opValue = (direita.getValor() != null) ? esquerda.getValor() + OR.getToken().valor() + direita.getValor() : null;
+            return T1(new NodeSemantico(OR, opTipo, opValue));
         }
         return esquerda;
     }
 
-    public Node TL() {
+    public NodeSemantico TL() {
         Token token = listaDeTokens.getFirst();
         if(a() || token.valor().equals("(") || token.valor().equals("!")) {
-            Node esquerda = expressaoRelacional();
+            NodeSemantico esquerda = expressaoRelacional();
             return TL1(esquerda);
         }
         return null;
     }
 
-    public Node TL1(Node esquerda) {
+    public NodeSemantico TL1(NodeSemantico esquerda) {
         if(listaDeTokens.isEmpty()) return esquerda;
         Token token = listaDeTokens.getFirst();
         if(token.valor().equals(")") ||
@@ -367,27 +566,32 @@ public class AnalisadorSintatico {
         }
         if(token.valor().equals("&&")) {
             Node AND = new Node(listaDeTokens.removeFirst());
-            AND.addChild(esquerda);
-            Node direita = expressaoRelacional();
+            AND.addChild(esquerda.getNode());
+            NodeSemantico direita = expressaoRelacional();
             if(direita == null) {
                 throw new SyntaticException("Expressão inválida, esperado termo após o operador \"&&\"", AND.getLastDescendant().getToken());
             }
-            AND.addChild(direita);
-            return TL1(AND);
+            AND.addChild(direita.getNode());
+            Tipos opTipo = verificaOperacaoLogica(esquerda, direita);
+            if(opTipo == Tipos.ERRO) {
+                throw new InvalidOperationException("Operação inválida.", AND.getToken().valor(), esquerda, direita);
+            }
+            String opValue = (direita.getValor() != null) ? esquerda.getValor() + AND.getToken().valor() + direita.getValor() : null;
+            return TL1(new NodeSemantico(AND, opTipo, opValue));
         }
         return esquerda;
     }
 
-    public Node expressaoRelacional() {
+    public NodeSemantico expressaoRelacional() {
         Token token = listaDeTokens.getFirst();
         if(a() || token.valor().equals("(") || token.valor().equals("!")){
-            Node esquerda = expressaoAritmetica();
+            NodeSemantico esquerda = expressaoAritmetica();
             return ER1(esquerda);
         }
         return null;
     }
 
-    public Node ER1(Node esquerda) {
+    public NodeSemantico ER1(NodeSemantico esquerda) {
         if(listaDeTokens.isEmpty()) return esquerda;
         Token token = listaDeTokens.getFirst();
         if(token.valor().equals("&&") ||
@@ -400,27 +604,32 @@ public class AnalisadorSintatico {
         }
         if(operadorDeComparacao()) {
             Node operador = COMP();
-            operador.addChild(esquerda);
-            Node direita = expressaoAritmetica();
+            operador.addChild(esquerda.getNode());
+            NodeSemantico direita = expressaoAritmetica();
             if(direita == null) {
                 throw new SyntaticException("Expressão inválida, esperado termo após o operador \"" + operador.getToken().valor() + "\"", operador.getLastDescendant().getToken());
             }
-            operador.addChild(direita);
-            return ER1(operador);
+            operador.addChild(direita.getNode());
+            Tipos opTipo = verificaOperacaoRelacional(esquerda, direita);
+            if(opTipo == Tipos.ERRO) {
+                throw new InvalidOperationException("Operação inválida.", operador.getToken().valor(), esquerda, direita);
+            }
+            String opValue = (direita.getValor() != null) ? esquerda.getValor() + operador.getToken().valor() + direita.getValor() : null;
+            return ER1(new NodeSemantico(operador, opTipo, opValue));
         }
         return esquerda;
     }
 
-    public Node expressaoAritmetica() {
+    public NodeSemantico expressaoAritmetica() {
         Token token = listaDeTokens.getFirst();
         if(a() || token.valor().equals("(") || token.valor().equals("!")) {
-            Node esquerda = T();
+            NodeSemantico esquerda = T();
             return EA1(esquerda);
         }
         return null;
     }
 
-    public Node EA1(Node esquerda) {
+    public NodeSemantico EA1(NodeSemantico esquerda) {
         if(listaDeTokens.isEmpty()) return esquerda;
         Token token = listaDeTokens.getFirst();
         if(token.valor().equals(")") ||
@@ -435,28 +644,38 @@ public class AnalisadorSintatico {
         }
         if(token.valor().equals("+") || token.valor().equals("-")) {
             Node operador = new Node(listaDeTokens.removeFirst());
-            operador.addChild(esquerda);
-            Node direita = T();
+            operador.addChild(esquerda.getNode());
+            NodeSemantico direita = T();
             if(direita == null) {
                 String op = (operador.getToken() == null) ? "." : " \"" + operador.getToken().valor() + "\"";
                 throw new SyntaticException("Expressão inválida, esperado termo após o operador" + op, operador.getLastDescendant().getToken());
             }
-            operador.addChild(direita);
-            return EA1(operador);
+            operador.addChild(direita.getNode());
+            Tipos opTipo;
+            if(token.valor().equals("+")) {
+                opTipo = verificaSoma(esquerda,direita);
+            } else {
+                opTipo = verificaOperacaoAritmetica(direita, esquerda);
+            }
+            if(opTipo == Tipos.ERRO) {
+                throw new InvalidOperationException("Operação inválida.", operador.getToken().valor(), esquerda, direita);
+            }
+            String opValue = (direita.getValor() != null) ? esquerda.getValor() + operador.getToken().valor() + direita.getValor() : null;
+            return EA1(new NodeSemantico(operador, opTipo, opValue));
         }
         return esquerda;
     }
 
-    private Node T() {
+    private NodeSemantico T() {
         Token token = listaDeTokens.getFirst();
         if(a() || token.valor().equals("(") || token.valor().equals("!")) {
-            Node esquerda = F();
+            NodeSemantico esquerda = F();
             return T1(esquerda);
         }
         return null;
     }
 
-    public Node T1(Node esquerda) {
+    public NodeSemantico T1(NodeSemantico esquerda) {
         if(listaDeTokens.isEmpty()) return esquerda;
         Token token = listaDeTokens.getFirst();
         if(token.valor().equals(")") ||
@@ -471,43 +690,61 @@ public class AnalisadorSintatico {
         }
         if(token.valor().equals("*") || token.valor().equals("/")) {
             Node operador = new Node(listaDeTokens.removeFirst());
-            operador.addChild(esquerda);
-            Node direita = F();
-            operador.addChild(direita);
-            return T1(operador);
+            operador.addChild(esquerda.getNode());
+            NodeSemantico direita = F();
+            operador.addChild(direita.getNode());
+            Tipos opTipo = verificaOperacaoAritmetica(esquerda, direita);
+            if(opTipo == Tipos.ERRO) {
+                throw new InvalidOperationException("Operação inválida.", operador.getToken().valor(), esquerda, direita);
+            }
+            String opValue = (direita.getValor() != null) ? esquerda.getValor() + operador.getToken().valor() + direita.getValor() : null;
+            return T1(new NodeSemantico(operador, opTipo, opValue));
         }
 
         return esquerda;
     }
 
-    private Node F() {
+    private NodeSemantico F() {
         Token token = listaDeTokens.getFirst();
         if(token.valor().equals("!")) {
             Node negacao = new Node(listaDeTokens.removeFirst());
-            Node filho = F();
+            NodeSemantico NS = F();
+            Node filho = NS.getNode();
             negacao.addChild(filho);
-            return negacao;
+            return new NodeSemantico(negacao, Tipos.BOOLEAN);
         }
 
         if(token.valor().equals("(")) {
             Node expressao = new Node(Sentencas.EXPRESSAO);
             expressao.addChild(new Node(listaDeTokens.removeFirst()));
-            Node conteudo = expressaoLogica();
-            expressao.addChild(conteudo);
+            NodeSemantico conteudo = expressaoLogica();
+            expressao.addChild(conteudo.getNode());
             expressao.addChild(new Node(listaDeTokens.removeFirst()));
-            return expressao;
+            return new NodeSemantico(expressao, conteudo.getTipo());
         }
 
         if(token.tipo() == Recursos.IDENTIFICADOR || token.tipo() == Recursos.NUMERICO) {
+            TokenID id = buscarIdentificador(token.valor());
+            if(token.tipo() == Recursos.IDENTIFICADOR && id == null) {
+                throw new SyntaticException("Identificador não declarado: " + token.valor(), token);
+            }
             Node NO = new Node(listaDeTokens.removeFirst());
             Node iterador = P();
             if(iterador != null) {
                 NO.addChild(iterador);
             }
-            return NO;
+            Tipos nodeTipo = (token.tipo() == Recursos.IDENTIFICADOR) ? id.getTipo() : getTipo(token);
+            String nodeValue = (token.tipo() == Recursos.IDENTIFICADOR) ? id.getValor() : token.valor();
+            NodeSemantico NS = new NodeSemantico(NO, nodeTipo, nodeValue);
+            return NS;
         }
 
-        return new Node(listaDeTokens.removeFirst());
+        Tipos nodeTipo = getTipo(token);
+        String nodeValue = null;
+        if(nodeTipo != Tipos.NULL) {
+            nodeValue = token.valor();
+        }
+        return new NodeSemantico(new Node(listaDeTokens.removeFirst()), nodeTipo, nodeValue);
     }
 
     private Node P() {
@@ -527,9 +764,9 @@ public class AnalisadorSintatico {
                 throw new SyntaticException("Esperado o caractere \"(\". A repetição é na forma de while(<expressão>).", NO.getLastDescendant().getToken());
             }
             consumirToken(NO);
-            Node resultado = expressao();
+            NodeSemantico resultado = expressao();
             if(resultado != null) {
-                NO.addChild(resultado);
+                NO.addChild(resultado.getNode());
             }
             if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals(")")) {
                 throw new SyntaticException("O parênteses do while não foi encerrado.", NO.getChildNodes().getFirst().getToken());
@@ -540,29 +777,37 @@ public class AnalisadorSintatico {
         }
 
         if(listaDeTokens.getFirst().valor().equals("for")) {
-            consumirToken(NO);
-            if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals("(")) {
-                throw new SyntaticException("Esperado o caractere \"(\". A repetição é na forma de for(<declaração>;<expressão>;<expressão>). A declaração e expressão podem ser vazias, porém o formato deve se mantido.", NO.getLastDescendant().getToken());
+            escopos.push(new HashMap<>());
+            try {
+                consumirToken(NO);
+                if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals("(")) {
+                    throw new SyntaticException("Esperado o caractere \"(\". A repetição é na forma de for(<declaração>;<expressão>;<expressão>). A declaração e expressão podem ser vazias, porém o formato deve se mantido.", NO.getLastDescendant().getToken());
+                }
+                consumirToken(NO);
+                R1(NO);
+                if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals(";")) {
+                    throw new SyntaticException("Esperado \";\"", listaDeTokens.getFirst());
+                }
+                consumirToken(NO);
+                R2(NO);
+                if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals(";")) {
+                    throw new SyntaticException("Esperado \";\"", listaDeTokens.getFirst());
+                }
+                consumirToken(NO);
+                R2(NO);
+                R3(NO);
+                if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals(")")) {
+                    throw new SyntaticException("O parênteses do for não foi encerrado.", NO.getChildNodes().getFirst().getToken());
+                }
+                consumirToken(NO);
+                bloco(NO);
+                return NO;
+            } catch (SyntaticException e) {
+                erroSintatico = true;
+                System.out.println("ERRO: " + e.getMessage());
+            } finally {
+                escopos.pop();
             }
-            consumirToken(NO);
-            R1(NO);
-            if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals(";")) {
-                throw new SyntaticException("Esperado \";\"", listaDeTokens.getFirst());
-            }
-            consumirToken(NO);
-            R2(NO);
-            if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals(";")) {
-                throw new SyntaticException("Esperado \";\"", listaDeTokens.getFirst());
-            }
-            consumirToken(NO);
-            R2(NO);
-            R3(NO);
-            if(listaDeTokens.isEmpty() || !listaDeTokens.getFirst().valor().equals(")")) {
-                throw new SyntaticException("O parênteses do for não foi encerrado.", NO.getChildNodes().getFirst().getToken());
-            }
-            consumirToken(NO);
-            bloco(NO);
-            return NO;
         }
 
         return null;
@@ -583,7 +828,7 @@ public class AnalisadorSintatico {
         Token token = listaDeTokens.getFirst();
         if(token.valor().equals(";") || token.valor().equals(")")) return;
         if(a() || token.valor().equals("!") || token.valor().equals("(")) {
-            repeticao.addChild(expressao());
+            repeticao.addChild(expressao().getNode());
         }
     }
 
